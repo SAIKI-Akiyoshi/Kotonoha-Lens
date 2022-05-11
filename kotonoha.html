@@ -203,8 +203,8 @@
           
           html +=
             "'" +
-            pattern.replace(/\./g,'？').replace( /\[(.)\]/g, "$1" ) +
-            "'に一致："
+            pattern.replace(/\./g,'・').replace( /\[(.)\]/g, "$1" ) +
+            "' に一致："
             + n + "件<br>"
           
           update_doc( 'grep_condition',  html );
@@ -304,10 +304,11 @@
           '' );
         let rege2 = new RegExp( '[' + unused_chars + ']+', 'g' );
 
-        document.getElementById( 'refine_words' ).innerHTML =
-          lines.join( "<br>" ).
-          replace( rege, '<font color="red"><b>$&</b></font>' ).
-          replace( rege2, '<font color="gray">$&</font>' );
+        update_doc( 'refine_words',
+                    lines.join( "<br>" ).
+                    replace( rege, '<font color="red"><b>$&</b></font>' ).
+                    replace( rege2, '<font color="gray">$&</font>' )
+                  );
       }
 
       //
