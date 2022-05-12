@@ -16,9 +16,9 @@ task :default => %w( kotonoha.html kotonoha.txt ) do |t|
   end
     
   File.open( HTML ){ |f| @html = f.gets(nil) }
-  dic_date = Time.parse( @html.match( /\d{4}\/\d+\/\d+/ ).to_a[0] )
-  # p [dic_date,File.stat( HTML ).mtime ]
-  if dic_date  < File.stat( HTML ).mtime - 3600 * 24 
+  dic_date = Time.parse( @html.match( /\d{4}\/\d+\/\d+/ ).to_a[0] + " 23:59:59" )
+   p [dic_date,File.stat( DIC ).mtime ]
+  if dic_date  < File.stat( DIC ).mtime
     puts "update date in #{HTML}"
     File.open( HTML, 'w+' ){ |f|
       f.puts @html.sub( /\d{4}\/\d+\/\d+/,
