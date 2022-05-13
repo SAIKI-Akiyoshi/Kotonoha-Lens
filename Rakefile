@@ -28,3 +28,6 @@ task :default => %w( kotonoha.html kotonoha.txt ) do |t|
 
 end
 
+task :format => [ DIC ] do |t|
+  %x[ ruby sort.rb #{DIC} > /tmp/koto.txt; mv /tmp/koto.txt #{DIC} ]
+end
