@@ -284,7 +284,7 @@
           score[ wd ] = s;
         });
 
-        let score_hist = dic_sort( score );
+        let score_hist = dic_sort( score ).filter( (sc) => sc.value > 0 );
         let lines = [];
         for ( let i = 0; i < score_hist.length; i += 3 ) {
           lines.push( score_hist.slice( i, i + 3 ).
