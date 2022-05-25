@@ -206,7 +206,7 @@
           html +=
             "'" +
             pattern.replace(/\./g,'・').replace( /\[(.)\]/g, "$1" ) +
-            "' に一致："
+            "' に一致する候補："
             + n + "件<br>"
           
           update_doc( 'grep_condition',  html );
@@ -386,12 +386,12 @@
       <pre><div id="matched_words"></div></pre>
     </div>
     <br>
-    使われている文字（頻度順）<br>
+    候補の単語で使われている文字（頻度順）<br>
     <div class="box">
       <pre><div id="hist_chars"></div></pre>
     </div>
     <br>
-    「当たり」でも「おしい」でもない文字を多く含む単語<br>
+    候補を絞り込む単語<br>
     <div class="box">
       <pre><div id="refine_words"></div></pre>
     </div>
