@@ -38,7 +38,7 @@ if $OPT_get
 elsif $OPT_cat
   do_cmd( "adb shell cat #{DIR}/#{DIC}" )
 elsif $OPT_put
-  do_cmd( "adb push #{DB} #{DIR}/#{DIC}" )
+  do_cmd( "adb push #{DIC} #{DIR}/#{DIC}" )
 else
   do_cmd( "adb shell ls -la #{DIR}/#{DIC}" )
 end
