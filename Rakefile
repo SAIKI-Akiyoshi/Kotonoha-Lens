@@ -5,7 +5,9 @@ HTML= 'kotonoha.html'
 
 task :default => %w( kotonoha.html kotonoha.txt ) do |t|
 
-  File.open( DIC ){ |f| @dic = f.gets(nil) }
+  #File.open( DIC ){ |f| @dic = f.gets(nil) }
+  @dic = %x[ ruby sort.rb #{DIC} ]
+  # var db_text=`  がなければ付加
   if @dic !~ /var\s+db_text/
     puts "add 'var db_text=`' to #{DIC} "
     File.open( DIC, 'w+' ){ |f|
@@ -15,9 +17,12 @@ task :default => %w( kotonoha.html kotonoha.txt ) do |t|
     }    
   end
     
+  #
+  # kotonoha.html の中の日付を更新
+  #
   File.open( HTML ){ |f| @html = f.gets(nil) }
   dic_date = Time.parse( @html.match( /\d{4}\/\d+\/\d+/ ).to_a[0] + " 23:59:59" )
-   p [dic_date,File.stat( DIC ).mtime ]
+  p [dic_date,File.stat( DIC ).mtime ]
   if dic_date  < File.stat( DIC ).mtime
     puts "update date in #{HTML}"
     File.open( HTML, 'w+' ){ |f|
