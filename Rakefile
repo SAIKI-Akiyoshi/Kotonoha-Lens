@@ -1,3 +1,4 @@
+# -*- coding:utf-8 -*-
 require 'time'
 
 DIC = 'kotonoha.txt'
@@ -6,16 +7,17 @@ HTML= 'kotonoha.html'
 task :default => %w( kotonoha.html kotonoha.txt ) do |t|
 
   #File.open( DIC ){ |f| @dic = f.gets(nil) }
-  @dic = %x[ ruby sort.rb #{DIC} ]
-  # var db_text=`  がなければ付加
-  if @dic !~ /var\s+db_text/
-    puts "add 'var db_text=`' to #{DIC} "
-    File.open( DIC, 'w+' ){ |f|
-      f.puts 'var db_text=`'
-      f.puts @dic
-      f.puts '`'
-    }    
-  end
+
+  # ソートする
+  @dic = %x[ ruby sort.rb #{DIC} ].strip
+
+  # var db_text=`  を付加
+  puts "add 'var db_text=`' to #{DIC} "
+  File.open( DIC, 'w+' ){ |f|
+    f.puts 'var db_text=`'
+    f.puts @dic
+    f.puts '`'
+  }
     
   #
   # kotonoha.html の中の日付を更新
