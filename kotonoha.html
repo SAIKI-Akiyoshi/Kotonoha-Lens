@@ -154,7 +154,7 @@
       //
       //
       //
-      var matched_words   = [];
+      var candidate_words   = [];
       var must_chars = '';
       
       function grep( pattern, must_chars, ng_chars ) {
@@ -165,12 +165,14 @@
                                   kataToHira( must_chars ) +
                                   hiraToKata( must_chars ) +
                                   "]", 'g' );
-        matched_words.length = 0;
+        candidate_words.length = 0;
         let lines   = [];
         try {
           let n = 0;
           for ( let i = 0; i < DB.length; ++i ) {
             let wd = kataToHira( DB[i] );
+
+            // 以下の場合は候補単語に入れない
 
             // 検索パターンに一致しない
             if ( wd.search( regex ) == -1 ) continue;
@@ -188,7 +190,8 @@
               if ( j < must_chars.length ) continue;
             }
 
-          matched_words.push( DB[i] );
+            // 候補単語に追加
+            candidate_words.push( DB[i] );
             // ５単語 単位で改行
             if ( n++ % 5 == 0 ) {
               lines.push( DB[i] );
@@ -211,7 +214,7 @@
             + n + "件<br>"
           
           update_doc( 'grep_condition',  html );
-          update_doc( 'matched_words',
+          update_doc( 'candidate_words',
                       lines.join( "<br>" ).
                       replace( must_ge, '<font color="red"><b>$&</b></font>' )
                     );
@@ -247,7 +250,7 @@
       function histgram() {
         let total;
         let hist;
-        [ hist, rate, total ] = calc_hist( matched_words )
+        [ hist, rate, total ] = calc_hist( candidate_words )
 
         let rege = new RegExp( '[' + must_chars + ']', 'g' )
 
@@ -288,6 +291,8 @@
         });
         // => { けものみち:9, わさびもち:10, ちょっけつ: 8,,, }
 
+        // 重みでソート、重みゼロをフィルタリング
+        // 行単位でスライス
         let score_hist = dic_sort( score ).filter( (sc) => sc.value > 0 );
         let lines = [];
         for ( let i = 0; i < score_hist.length; i += 3 ) {
@@ -299,12 +304,13 @@
                       }).join( '　' )
                     );
         }
-        // => 10:わさびもち　9:おともだち　9: けものみち
-        //     8:ちょっけつ
+        // => " 10:わさびもち　9:おともだち　9: けものみち"
+        //    "  8:ちょっけつ
         //                
-        // 検索結果の中の matched_words に含まれない文字
-        
-        let used_chars = kataToHira( uniq( matched_words.join('') ) );
+
+        // 検索結果の中の candidate_words に含まれない文字をグレー表示
+        // するための RegExp => rege2
+        let used_chars = kataToHira( uniq( candidate_words.join('') ) );
         let unused_chars = KANA_LIST.join('').replace( 
           new RegExp( '[' + used_chars + ']', 'g' ),    // 使用文字を削除
           '' );
@@ -387,7 +393,7 @@
     
     <div id="grep_condition"></div>
     <div class="box">
-      <pre><div id="matched_words"></div></pre>
+      <pre><div id="candidate_words"></div></pre>
     </div>
     <br>
     候補の単語で使われている文字（頻度順）<br>
