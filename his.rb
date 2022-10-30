@@ -69,8 +69,10 @@ Gnuplot.open do |gp|
     # [ [date,words], [date,words], [date,words], [date,words],,,,
     # => [ [ date, date, ,,,, ], [words, words , words],,, ]
     plot.data << Gnuplot::DataSet.new( data ) do |ds|
-      ds.title     = 
-      ds.with      = "linespoints"
+      ds.title     = 'Words'
+      ds.with      = 'linespoints pointtype 6'
+      ds.linecolor = 3
+      ds.linewidth = 1
       ds.using     = "1:2"
       ds.linewidth = "2"
     end
