@@ -42,6 +42,7 @@ new_commits.each{ |c|
 }
 
 if new_commits.size > 0
+  @data.sort_by!{ |h| h['date'] }
   puts "adding #{new_commits.size} records, updating 'his.json'"
   open( "his.json", "w" ){ |f|  f.puts JSON.pretty_generate( @data ) }
 end
