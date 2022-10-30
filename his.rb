@@ -52,6 +52,8 @@ Gnuplot.open do |gp|
     # plot.xrange "[-3:3]"
     # f = "x ** 4 + 2 * 5 ** 3 - 10 * x ** 2 + 5 * x  + 4"
     # plot.data << Gnuplot::DataSet.new(f)
+    plot.set 'terminal qt font "Helvetica" '
+
     plot.xlabel  "Date"
     plot.ylabel  "Words"
 
