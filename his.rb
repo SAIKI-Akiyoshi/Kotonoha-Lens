@@ -4,11 +4,15 @@
 require 'optparse'
 require 'time'
 require 'json'
+require 'gnuplot'
+
 
 exit unless ARGV.options {|opt|
   opt.on( '-v', '--verbose' ) { |v| $OPT_a = v  }
   opt.parse!
 }
+
+#############################################################
 
 begin
   @data = JSON.load( open( "his.json" ).gets(nil) )
@@ -42,7 +46,6 @@ if new_commits.size > 0
   open( "his.json", "w" ){ |f|  f.puts JSON.pretty_generate( @data ) }
 end
 
-require 'gnuplot'
 
 Gnuplot.open do |gp|
   Gnuplot::Plot.new(gp) do |plot|
@@ -60,9 +63,10 @@ Gnuplot.open do |gp|
 
     plot.style "data lines"
 
-    x = @data.sort_by{ |h| h['date'] }.map{ |h| h['date'] }
-    y = @data.sort_by{ |h| h['date'] }.map{ |h| h['words'] }
-    plot.data << Gnuplot::DataSet.new( [x,y] ) do |ds|
+    data = @data.map{ |h| [h['date'], h['words']] }.uniq.sort.transpose
+    # [ [date,words], [date,words], [date,words], [date,words],,,,
+    # => [ [ date, date, ,,,, ], [words, words , words],,, ]
+    plot.data << Gnuplot::DataSet.new( data ) do |ds|
       ds.title     = 
       ds.with      = "linespoints"
       ds.using     = "1:2"
