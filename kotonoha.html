@@ -308,7 +308,7 @@
         //    "  8:ちょっけつ
         //                
 
-        // 検索結果の中の candidate_words に含まれない文字をグレー表示
+        // 検索結果の中の candidate_words に含まれない文字をolive表示
         // するための RegExp => rege2
         let used_chars = kataToHira( uniq( candidate_words.join('') ) );
         let unused_chars = KANA_LIST.join('').replace( 
@@ -319,7 +319,7 @@
         update_doc( 'refine_words',
                     lines.join( "<br>" ).
                     replace( rege, '<font color="red"><b>$&</b></font>' ).
-                    replace( rege2, '<font color="gray">$&</font>' )
+                    replace( rege2, '<font color="olive">$&</font>' )
                   );
       }
 
