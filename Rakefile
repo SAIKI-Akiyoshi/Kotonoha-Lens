@@ -18,18 +18,19 @@ task :default => %w( kotonoha.html kotonoha.txt ) do |t|
     f.puts @dic
     f.puts '`'
   }
-    
-  #
-  # kotonoha.html の中の日付を更新
-  #
-  File.open( HTML ){ |f| @html = f.gets(nil) }
-  dic_date = Time.parse( @html.match( /\d{4}\/\d+\/\d+/ ).to_a[0] + " 23:59:59" )
-  p [dic_date,File.stat( DIC ).mtime ]
-  if dic_date  < File.stat( DIC ).mtime
+
+  @diff = %x[ git diff #{DIC} ].strip
+  if @diff.size != 0
+    #
+    # kotonoha.html の中の日付を更新
+    #
+    File.open( HTML ){ |f| @html = f.gets(nil) }
+    dic_date = Time.parse( @html.match( /\d{4}\/\d+\/\d+ \d+:\d+:\d+/ ).to_a[0] )
+    p [dic_date,File.stat( DIC ).mtime ]
     puts "update date in #{HTML}"
     File.open( HTML, 'w+' ){ |f|
-      f.puts @html.sub( /\d{4}\/\d+\/\d+/,
-                        File.stat( HTML ).mtime.strftime( "%Y/%m/%d" ) )
+      f.puts @html.sub( /\d{4}\/\d+\/\d+ \d+:\d+:\d+/,
+                        File.stat( HTML ).mtime.strftime( "%Y/%m/%d %H:%M:%S" ) )
     }
   end
 
