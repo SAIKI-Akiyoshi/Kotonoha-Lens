@@ -20,7 +20,9 @@ task :default => %w( kotonoha.html kotonoha.txt ) do |t|
   }
 
   @diff = %x[ git diff #{DIC} ].strip
-  if @diff.size != 0
+  if @diff.size == 0
+    puts "#{DIC} is already up-to-date."
+  else
     #
     # kotonoha.html の中の日付を更新
     #
