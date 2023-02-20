@@ -36,7 +36,7 @@ new_commits.each{ |c|
   txt = %x[ git show #{c}:kotonoha.txt | ruby sort.rb -f ]
 
   @data << { 'date'  => dt.strftime( "%Y/%m/%d_%H:%M"),
-             'words' => txt.split(/\n/).size,
+             'words' => txt.split(/\n/).uniq.select{ |s| s.strip != "" }.size,
              'commit'=> c
   }.tap{ |t| p t}
 }
