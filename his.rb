@@ -29,31 +29,48 @@ puts "data from 'his.json':  record size = #{@data.size}"
 puts "data from 'git log':   record size = #{@commits.size}"
 puts @commits  if $OPT_v
 
+
+# diff
 new_commits = @commits.keys - @data.map{ |h| h['commit'] }
 
 new_commits.each{ |c|
-  dt = @commits[c]  
+  dt = @commits[c]
   txt = %x[ git show #{c}:kotonoha.txt | ruby sort.rb -f ]
 
   @data << { 'date'  => dt.strftime( "%Y/%m/%d_%H:%M"),
-             'words' => txt.split(/\n/).uniq.select{ |s| s.strip != "" }.size,
-             'commit'=> c
-  }.tap{ |t| p t}
+        'words' => txt.split(/\n/).uniq.select{ |s| s.strip != "" }.size,
+        'commit'=> c
+  }.tap{ |t|
+    d = t.clone
+    d[ 'commit' ] = t[ 'commit' ][0,10]
+    p d
+  }
 }
+@data.sort_by!{ |h| h['date'] }
 
+# update JSON
 if new_commits.size > 0
-  @data.sort_by!{ |h| h['date'] }
   puts "adding #{new_commits.size} records, updating 'his.json'"
   open( "his.json", "w" ){ |f|  f.puts JSON.pretty_generate( @data ) }
 end
 
+
+# delete same word-size data
+@data.uniq! { |d| d['words'] }
+p [ '@data:', @data.size ]
+
+if RUBY_PLATFORM =~ /cygwin/i
+  terminal = "terminal x11"
+else
+  terminal = 'terminal qt font "Helvetica"'
+end
 
 Gnuplot.open do |gp|
   Gnuplot::Plot.new(gp) do |plot|
     # plot.xrange "[-3:3]"
     # f = "x ** 4 + 2 * 5 ** 3 - 10 * x ** 2 + 5 * x  + 4"
     # plot.data << Gnuplot::DataSet.new(f)
-    plot.set 'terminal qt font "Helvetica" '
+    plot.set terminal
     plot.set 'yrange [0:]'
     plot.xlabel  "Date"
     plot.ylabel  "Words"
