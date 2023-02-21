@@ -55,17 +55,9 @@ if new_commits.size > 0
 end
 
 
-# delete same word_size data"
-@same_word_size_data = []
-prev = nil
-@data.each{ |d|
-  @same_word_size_data << d['commit']   if prev == d['words']
-  prev = d['words']
-}
-@data.select!{ |d|
-  ! @same_word_size_data.include?( d['commit'] )
-}
-p ['same:', @same_word_size_data.size,  '@data:', @data.size ]
+# delete same word-size data
+@data.uniq! { |d| d['words'] }
+p [ '@data:', @data.size ]
 
 if RUBY_PLATFORM =~ /cygwin/i
   terminal = "terminal x11"
