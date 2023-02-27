@@ -155,15 +155,14 @@
       //
       //
       var candidate_words   = [];
-      var must_chars = '';
       
-      function grep( pattern, must_chars, ng_chars ) {
+      function grep( pattern, hit_c, blow_c, ng_chars ) {
         
         let regex   = new RegExp( kataToHira( pattern ) )
         let ng_ge   = new RegExp( "[" + kataToHira( ng_chars   ) + "]" );
         let must_ge = new RegExp( "[" +
-                                  kataToHira( must_chars ) +
-                                  hiraToKata( must_chars ) +
+                                  kataToHira( blow_c + hit_c ) +
+                                  hiraToKata( blow_c + hit_c ) +
                                   "]", 'g' );
         candidate_words.length = 0;
         let lines   = [];
@@ -181,13 +180,13 @@
             if ( ng_chars.length != 0 &&
                  wd.search( ng_ge ) != -1 ) continue;
 
-            // どれかの MUST文字が含まれていない
-            if ( must_chars.length != 0 ) {
+            // どれかの blow_c が含まれていない
+            if ( blow_c.length != 0 ) {
               let j = 0;
-              for ( ; j < must_chars.length; ++j ) {
-                if ( wd.indexOf( must_chars[j] ) < 0 ) break;
+              for ( ; j < blow_c.length; ++j ) {
+                if ( wd.indexOf( blow_c[j] ) < 0 ) break;
               }
-              if ( j < must_chars.length ) continue;
+              if ( j < blow_c.length ) continue;
             }
 
             // 候補単語に追加
@@ -202,8 +201,8 @@
           }
           
           let html = '';
-          if ( must_chars.length > 0 ) 
-            html += "「" + must_chars + "」を含み、<br>";
+          if ( blow_c.length > 0 ) 
+            html += "「" +blow_c + "」を含み、<br>";
           if ( ng_chars.length > 0 )
             html += "「" + ng_chars + "」を含まず、<br>";
           
@@ -247,7 +246,7 @@
       //
       // 検索結果の単語の含まれる文字のヒストグラム
       //
-      function histgram() {
+      function histgram( must_chars ) {
         let total;
         let hist;
         [ hist, rate, total ] = calc_hist( candidate_words )
@@ -330,13 +329,14 @@
       function analyze() {
 
         let pattern = [ '.', '.', '.', '.', '.' ];
-        must_c = ''
+        blow_c = ''
+        hit_c  = ''
 
         for ( let i = 0; i < 5; ++i ) {
           let mc = cur_chars[ "hit_" + (i + 1) ];
           if ( mc.length > 0 ) {
             pattern[ i ] = '[' + mc + ']'
-            must_c += mc;
+            hit_c += mc;
           }
 
           bc = cur_chars[ "blow_" + (i + 1) ];
@@ -344,18 +344,16 @@
             if ( mc.length == 0 ) {
               pattern[ i ] = '[^' + bc + ']';
             }
-            must_c += bc;
+            blow_c += bc;
           }
         }
 
-        must_chars = uniq( kataToHira(must_c) );      // 重複する文字を削除
-
-        // must_chars を含み、cur_chars[ "none" ]を含まず
+        // blow_chars を含み、cur_chars[ "none" ]を含まず
         // pattern にマッチする 単語 を調べる
-        grep( pattern.join(''), must_chars, cur_chars[ "none" ] );
+        grep( pattern.join(''), hit_c, blow_c, cur_chars[ "none" ] );
 
         // 検索結果の単語の含まれる文字のヒストグラム
-        histgram();
+        histgram( uniq( kataToHira(blow_c+hit_c) ) );
       }
 
 
