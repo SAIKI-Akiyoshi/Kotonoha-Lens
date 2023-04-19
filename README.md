@@ -5,8 +5,7 @@
 
 [**ことのはたんご｜単語推理ゲーム**](https://plum-chloride.jp/kotonoha-tango/index.html)で比較的簡単に連勝できます。
 
-
-![スマフォでの操作画面](https://saiki-akiyoshi.github.io/Kotonoha-Lens/Screenshot.png)
+<img src="https://saiki-akiyoshi.github.io/Kotonoha-Lens/Screenshot.png" width="240px">
 
 ## 使い方
 
@@ -30,3 +29,6 @@
 ## 注意
 
 辞書にない単語が出題された場合には正解にたどり着けません。
+その場合には [語尾検索エンジン](https://bluesnap.net/gobisearch/)のようなサイトを利用して自力で正解してください。
+
+html に不慣れなため画面のレイアウトがイマイチです。
