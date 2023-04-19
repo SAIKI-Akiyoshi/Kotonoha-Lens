@@ -5,6 +5,9 @@
 
 [**ことのはたんご｜単語推理ゲーム**](https://plum-chloride.jp/kotonoha-tango/index.html)で比較的簡単に連勝できます。
 
+
+![スマフォでの操作画面](https://saiki-akiyoshi.github.io/Kotonoha-Lens/Screenshot.png)
+
 ## 使い方
 
 **ことのはたんご**の評価（緑、黄、灰）の通りに
