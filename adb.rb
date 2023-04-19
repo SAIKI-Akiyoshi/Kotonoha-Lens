@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 #
-
-# eagle vision の Eagle.db を ShotView にコピーする
+# Android側の辞書をPC側に get あるいは PC側の辞書をAndroid側へput する
+# adb put/get をラップしているだけ
 # adb を事前に接続しておく必要あり
 #
 
