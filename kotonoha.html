@@ -51,6 +51,12 @@
     <script type="text/javascript" src="./kotonoha.txt"></script>
 
     <script type="text/javascript">
+      console.time( "koto" )
+      function log( msg ) {
+          console.log( msg )
+          console.timeLog( "koto" )
+      }
+      log( "start")
       /*
        * (setq js-indent-level 2) 
        */
@@ -147,7 +153,9 @@
       }
 
       function update_doc( id, html ) {
+        log( "> update_doc " + id  )
         document.getElementById( id ).innerHTML = html;
+        log( "< update_doc " + id  )
       }
 
 
@@ -157,6 +165,7 @@
       var candidate_words   = [];
       
       function grep( pattern, hit_c, blow_c, ng_chars ) {
+        log( "> gep: " + pattern )
         
         let regex   = new RegExp( kataToHira( pattern ) )
         let ng_ge   = new RegExp( "[" + kataToHira( ng_chars   ) + "]" );
@@ -220,6 +229,7 @@
         } catch (e) {
           // 正規表現の文法エラーを無視する  
         }
+        log( "< gep: " );
       }
 
       // words[] の中の文字の出現頻度を調べる
@@ -228,6 +238,8 @@
       //  total : v1 + v2 + ...
       //
       function calc_hist( words ) {
+        log( "> calc_hist: " );
+
         let rate  = {};
         let total = 0;
         KANA_LIST.forEach( kana => rate[ kana ] = 0 );
@@ -240,13 +252,18 @@
           }
         });
 
-        return [ dic_sort( rate ), rate, total ];
+        ret_val = [ dic_sort( rate ), rate, total ];
+
+        log( "< calc_hist: " );
+        return ret_val;
       }
       
       //
       // 検索結果の単語の含まれる文字のヒストグラム
       //
       function histgram( must_chars ) {
+        log( "> histgram" )
+
         let total;
         let hist;
         [ hist, rate, total ] = calc_hist( candidate_words )
@@ -272,7 +289,7 @@
                     text
                   );
 
-
+        log( "> DB.forEach" )
         // 検索結果をさらに絞り込むために効果的な単語をリストする
 
         // 一致結果の中で 「当たり」でも「おしい」でもない文字を含む単語
@@ -288,8 +305,10 @@
           }
           score[ wd ] = s;
         });
+        log( "< DB.forEach" )
         // => { けものみち:9, わさびもち:10, ちょっけつ: 8,,, }
 
+        log( "> for" )
         // 重みでソート、重みゼロをフィルタリング
         // 行単位でスライス
         let score_hist = dic_sort( score ).filter( (sc) => sc.value > 0 );
@@ -303,6 +322,7 @@
                       }).join( '　' )
                     );
         }
+        log( "< for" )
         // => " 10:わさびもち　9:おともだち　9: けものみち"
         //    "  8:ちょっけつ
         //                
@@ -320,6 +340,7 @@
                     replace( rege, '<font color="red"><b>$&</b></font>' ).
                     replace( rege2, '<font color="olive">$&</font>' )
                   );
+        log( "< histgram" )
       }
 
       //
@@ -327,6 +348,7 @@
       // <input>の内容を取り出して grep(), histgram() を呼ぶ
       //
       function analyze() {
+        log( "start analyze" )
 
         let pattern = [ '.', '.', '.', '.', '.' ];
         blow_c = ''
@@ -367,7 +389,7 @@
 
   <body>
     <h3>　　　ことのはレンズ
-    <font size=-3>(2023/04/19 18:12:16)</font></h3>
+    <font size=-3>(2023/05/04 20:57:19)</font></h3>
     <font size=-1>当たり！</font>
     <input type="text" size="3" id="hit_1" class="hit" >
     <input type="text" size="3" id="hit_2" class="hit" >
