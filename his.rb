@@ -71,7 +71,7 @@ Gnuplot.open do |gp|
     # f = "x ** 4 + 2 * 5 ** 3 - 10 * x ** 2 + 5 * x  + 4"
     # plot.data << Gnuplot::DataSet.new(f)
     plot.set terminal
-    plot.set 'yrange [0:]'
+    plot.set 'yrange [2000:10000]'
     plot.xlabel  "Date"
     plot.ylabel  "Words"
 
@@ -79,7 +79,8 @@ Gnuplot.open do |gp|
     
     plot.timefmt "'%Y/%m/%d_%H:%M'"
     plot.xdata "time"
-    plot.format  "x '%Y/%m/%d'"
+    plot.format  "x '%Y/%m'"
+    plot.set "xtics rotate by -45"
 
     plot.style "data lines"
 
