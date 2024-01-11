@@ -1,10 +1,10 @@
 
 console.time( "koto" )
 function log( msg ) {
-  console.log( msg )
-  //console.timeLog( "koto" )
+  console.log( msg );
+  //console.timeLog( "koto" );
 }
-log( "start")
+log( "start");
 
 const sleep = (msec) => {
   return new Promise(function (resolve) {
@@ -139,9 +139,9 @@ function dic_sort( dic ) {
 }
 
 function update_doc( id, html ) {
-  log( "> update_doc " + id  )
+  log( "> update_doc " + id  );
   document.getElementById( id ).innerHTML = html;
-  log( "< update_doc " + id  )
+  log( "< update_doc " + id  );
 }
 
 
@@ -151,7 +151,7 @@ function update_doc( id, html ) {
 var candidate_words   = [];
 
 async function grep( pattern, hit_c, blow_c, ng_chars ) {
-  log( "> grep: " + pattern )
+  log( "> grep: " + pattern );
 
   candidate_words.length = 0;
   try {
@@ -167,33 +167,28 @@ async function grep( pattern, hit_c, blow_c, ng_chars ) {
     let step     = DB.length / 10;
 
     for ( let i = 0; i < DB.length; ++i ) {
-      if ( i % step == 0 ) {
-        // 8000回ループの間、時々 event loopに制御を渡す
-        await sleep(1);
-      }
+      // 8000回ループの間、時々 event loopに制御を渡す
+      if ( i % step == 0 ) { await sleep(1); }
+
       let wd = HIRA_DB[i];
 
-      // 以下の場合は候補単語に入れない
+      if (
+        // おしい文字全てが含まれている
+        ( blow_a.length == 0 || blow_a.every( (c) => wd.indexOf(c) >= 0 ) ) &&
+          // どの NG 文字にも一致しない
+        ( ng_chars.length == 0 || wd.search( ng_re ) == -1 ) &&
+          // 検索パターンに一致
+        ( wd.search( match_re ) >= 0 ) ) {
 
-      // おしい文字のどれかが含まれない（おしい文字は全て含まれる必要がある）
-      if ( blow_a.length != 0 &&
-            blow_a.find( (c) => wd.indexOf(c) < 0 ) ) continue;
-
-      // NG 文字のどれかに一致
-      if ( ng_chars.length != 0 &&
-           wd.search( ng_re ) != -1 ) continue;
-
-      // 検索パターンに一致しない
-      if ( wd.search( match_re ) == -1 ) continue;
-
-      // 候補単語に追加
-      candidate_words.push( DB[i] );
-      // ５単語 単位で改行
-      if ( n++ % 5 == 0 ) {      // 行頭
-        lines.push( DB[i] );
-      }
-      else {
-        lines[ lines.length - 1 ] += "　" + DB[i];  // 空白に続けて追加
+        // 候補単語に追加
+        candidate_words.push( DB[i] );
+        // ５単語 単位で改行
+        if ( n++ % 5 == 0 ) {      // 行頭
+          lines.push( DB[i] );
+        }
+        else {
+          lines[ lines.length - 1 ] += "　" + DB[i];  // 空白に続けて追加
+        }
       }
     }
 
@@ -252,7 +247,7 @@ function calc_hist( words ) {
 // 検索結果の単語の含まれる文字のヒストグラム
 //
 async function histgram( must_chars ) {
-  log( "> histgram" )
+  log( "> histgram" );
 
   let total;
   let hist;
@@ -279,7 +274,7 @@ async function histgram( must_chars ) {
               text
             );
 
-  log( "> DB.forEach" )
+  log( "> DB.forEach" );
   // 検索結果をさらに絞り込むために効果的な単語をリストする
 
   // 一致結果の中で 「当たり」でも「おしい」でもない文字を含む単語
@@ -295,10 +290,10 @@ async function histgram( must_chars ) {
     }
     score[ wd ] = s;
   });
-  log( "< DB.forEach" )
+  log( "< DB.forEach" );
   // => { けものみち:9, わさびもち:10, ちょっけつ: 8,,, }
 
-  log( "> for" )
+  log( "> for" );
   // 重みでソート、重みゼロをフィルタリング
   // 行単位でスライス
   let score_hist = dic_sort( score ).filter( (sc) => sc.value > 0 );
@@ -312,7 +307,7 @@ async function histgram( must_chars ) {
                 }).join( '　' )
               );
   }
-  log( "< for" )
+  log( "< for" );
   // => " 10:わさびもち　9:おともだち　9: けものみち"
   //    "  8:ちょっけつ
   //
@@ -338,7 +333,7 @@ async function histgram( must_chars ) {
     await sleep(1);
   }
   update_doc( 'refine_words', refine_doc );
-  log( "< histgram" )
+  log( "< histgram" );
 }
 
 //
@@ -347,7 +342,7 @@ async function histgram( must_chars ) {
 //
 async function analyze() {
   in_analyze = true;
-  log( "start analyze" )
+  log( "start analyze" );
 
   let pattern = [ '.', '.', '.', '.', '.' ];   // 初期値：なんでもOK
   let blow_c = ''
@@ -373,7 +368,7 @@ async function analyze() {
   // 検索結果の単語の含まれる文字のヒストグラム
   await histgram( uniq( kataToHira(blow_c+hit_c) ) )
 
-  log( "return analyze" )
+  log( "return analyze" );
   in_analyze = false;
 }
 
