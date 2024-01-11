@@ -55,22 +55,23 @@ function start() {
   // kotonoha.txt を内容から DB[] を作る
   //
   db_text.split( /\n/).forEach( line => {
-    let wd = line.replace( /[,、\/／　 ]+$/, '' ) //行末の区切りを削除
-    if ( wd.length == 5 && wd.search( /[　 ]/) == -1 ) { // 5文字、空白なし
-      DB.push( wd );
-      HIRA_DB.push( kataToHira( wd ) )
-      lead = '';
+    // 空白 , / で分割
+    let words = line.split( /[,、\/／　 ]+/ ).filter( (s) => s != '' );
+
+    if ( words.length == 1 && words[0].length == 5 ) { // 5文字
+      // かわりもの
+      DB.push( words[0] );
+      HIRA_DB.push( kataToHira( words[0] ) )
     }
-    else {
-      let words = line.split( /[,、\/／　 ]+/ );  // 空白 , / で分割
-      if ( line.search( /^[　 ]/ ) == -1 ) {   // 行頭が空白ではない
+    else if ( words.length > 0 ) {
+      //かん　きゃく　きゅう　きょう
+      //　　　ぎょう
+      if ( line.search( /^[　 ]/ ) == -1 ) { // 行頭が空白ではない
         lead = words.shift();
       }
       words.forEach( wd => {
-        if ( wd.length != 0 ) {
-          DB.push( lead + wd );
-          HIRA_DB.push( kataToHira( lead + wd ) );
-        }
+        DB.push( lead + wd );
+        HIRA_DB.push( kataToHira( lead + wd ) );
       });
     }
   });
@@ -79,8 +80,8 @@ function start() {
     let btn = document.getElementById( id )
     btn.addEventListener( "input", check_input );
   });
-  check_input();
 
+  check_input();
 };
 
 function check_input() {
@@ -152,19 +153,21 @@ var candidate_words   = [];
 async function grep( pattern, hit_c, blow_c, ng_chars ) {
   log( "> grep: " + pattern )
 
-  let regex   = new RegExp( kataToHira( pattern ) )
-  let ng_ge   = new RegExp( "[" + kataToHira( ng_chars ) + "]" );
-  let must_ge = new RegExp( "[" +
-                            kataToHira( blow_c + hit_c ) +
-                            hiraToKata( blow_c + hit_c ) +
-                            "]", 'g' );
   candidate_words.length = 0;
-  blow_a = blow_c.split('')
-  let lines   = [];
   try {
-    let n = 0;   // 行数
+    let match_re = new RegExp( kataToHira( pattern ) )
+    let ng_re    = new RegExp( "[" + kataToHira( ng_chars ) + "]" );
+    let must_re  = new RegExp( "[" +
+                               kataToHira( blow_c + hit_c ) +
+                               hiraToKata( blow_c + hit_c ) +
+                               "]", 'g' );
+    let blow_a   = blow_c.split('')
+    let lines    = [];
+    let n        = 0;   // 行数
+    let step     = DB.length / 10;
+
     for ( let i = 0; i < DB.length; ++i ) {
-      if ( i % ( DB.length / 10 ) == 0 ) {
+      if ( i % step == 0 ) {
         // 8000回ループの間、時々 event loopに制御を渡す
         await sleep(1);
       }
@@ -172,25 +175,25 @@ async function grep( pattern, hit_c, blow_c, ng_chars ) {
 
       // 以下の場合は候補単語に入れない
 
-      // 含まれないおしい文字がある
+      // おしい文字のどれかが含まれない（おしい文字は全て含まれる必要がある）
       if ( blow_a.length != 0 &&
             blow_a.find( (c) => wd.indexOf(c) < 0 ) ) continue;
 
       // NG 文字のどれかに一致
       if ( ng_chars.length != 0 &&
-           wd.search( ng_ge ) != -1 ) continue;
+           wd.search( ng_re ) != -1 ) continue;
 
       // 検索パターンに一致しない
-      if ( wd.search( regex ) == -1 ) continue;
+      if ( wd.search( match_re ) == -1 ) continue;
 
       // 候補単語に追加
       candidate_words.push( DB[i] );
       // ５単語 単位で改行
-      if ( n++ % 5 == 0 ) {
+      if ( n++ % 5 == 0 ) {      // 行頭
         lines.push( DB[i] );
       }
       else {
-        lines[ lines.length - 1 ] += "　" + DB[i];
+        lines[ lines.length - 1 ] += "　" + DB[i];  // 空白に続けて追加
       }
     }
 
@@ -210,7 +213,7 @@ async function grep( pattern, hit_c, blow_c, ng_chars ) {
 
     update_doc( 'candidate_words',
                 lines.join( "<br>" ).
-                replace( must_ge, '<font color="red"><b>$&</b></font>' )
+                replace( must_re, '<font color="red"><b>$&</b></font>' )
               );
   } catch (e) {
     // 正規表現の文法エラーを無視する
@@ -347,28 +350,26 @@ async function analyze() {
   log( "start analyze" )
 
   let pattern = [ '.', '.', '.', '.', '.' ];   // 初期値：なんでもOK
-  blow_c = ''
-  hit_c  = ''
+  let blow_c = ''
+  let hit_c  = ''
 
   for ( let i = 0; i < 5; ++i ) {
-    let mc = cur_chars[ "hit_" + (i + 1) ];    // 当たりの文字
+    let mc = cur_chars[ "hit_"  + (i + 1) ];   // 当たりの文字
+    let bc = cur_chars[ "blow_" + (i + 1) ];   // おしい文字
+    hit_c  += mc;
+    blow_c += bc;
     if ( mc.length > 0 ) {
-      pattern[ i ] = '[' + mc + ']'            // そこに含まれる
-      hit_c += mc;
+      pattern[ i ] = '[' + mc + ']'          // そこに含まれる
     }
-
-    bc = cur_chars[ "blow_" + (i + 1) ];       // おしい文字
-    if ( bc.length > 0 ) {
-      if ( mc.length == 0 ) {
-        pattern[ i ] = '[^' + bc + ']';        // そこには含まれない
-      }
-      blow_c += bc;
+    else if ( bc.length > 0 ) {
+      pattern[ i ] = '[^' + bc + ']';        // そこには含まれない
     }
   }
 
   // blow_chars を含み、cur_chars[ "none" ]を含まず
   // pattern にマッチする 単語 を調べる
   await grep( pattern.join(''), hit_c, blow_c, cur_chars[ "none" ] );
+
   // 検索結果の単語の含まれる文字のヒストグラム
   await histgram( uniq( kataToHira(blow_c+hit_c) ) )
 
