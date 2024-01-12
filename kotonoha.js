@@ -1,10 +1,18 @@
 
-console.time( "koto" )
+var start_t    = new Date().getTime();
+var log_indent = 0;
 function log( msg ) {
-  console.log( msg );
-  //console.timeLog( "koto" );
+  if ( msg == '' ) {
+    start_t = new Date().getTime();
+  }
+  else {
+    if ( msg[0] == '>' )  log_indent += 2;
+    let diff  = new Date().getTime() - start_t;
+    let space = "                 ".slice(0,log_indent);
+    console.log( "%3d: %s%s", diff, space, msg );
+    if ( msg[0] == '<' )  log_indent -= 2;
+  }
 }
-log( "start");
 
 const sleep = (msec) => {
   return new Promise(function (resolve) {
@@ -50,6 +58,8 @@ var HIRA_DB = [];
 var in_analyze = false;
 
 function start() {
+log( '' )
+log( "> start");
   let lead = '';
   //
   // kotonoha.txt を内容から DB[] を作る
@@ -81,16 +91,19 @@ function start() {
     btn.addEventListener( "input", check_input );
   });
 
+  log( "< start");
   check_input();
 };
 
 function check_input() {
-  console.log( "check_input()");
   if ( in_analyze ) {
-    console.log( "              IN ANALYZE" );
+    console.log( "IN ANALYZE" );
     setTimeout( check_input, 300 ); // 少し待って再トライ
   }
   else {
+    log( '' );
+    log( "> check_input()" );
+
     // input欄の内容を読み込んで analyze() を呼ぶ
     let changed = false;
     Object.keys(cur_chars).forEach( id => {
@@ -106,6 +119,8 @@ function check_input() {
     if ( changed ) {
       analyze();
     }
+
+    log( "< check_input()" );
   }
 }
 
@@ -139,8 +154,9 @@ function dic_sort( dic ) {
 }
 
 function update_doc( id, html ) {
-  log( "update_doc " + id  );
+  log( "> update_doc " + id  );
   document.getElementById( id ).innerHTML = html;
+  log( "<" )
 }
 
 
@@ -151,7 +167,7 @@ var candidate_words = [];
 var must_RE         = null;
 
 async function grep( pattern, blow_c, ng_chars ) {
-  log( "> grep: " + pattern );
+  log( "> grep( "+ pattern + ")" );
 
   candidate_words.length = 0;
   try {
@@ -211,7 +227,7 @@ async function grep( pattern, blow_c, ng_chars ) {
     // 正規表現の文法エラーを無視する
     console.log(e)
   }
-  log( "< grep: " );
+  log( "< grep()" );
 }
 
 // words[] の中の文字の出現頻度を調べる
@@ -220,7 +236,7 @@ async function grep( pattern, blow_c, ng_chars ) {
 //  total : v1 + v2 + ...
 //
 function calc_hist( words ) {
-  log( "> calc_hist: " );
+  log( "> calc_hist()" );
 
   let rate  = {};
   let total = 0;
@@ -236,7 +252,7 @@ function calc_hist( words ) {
 
   ret_val = [ dic_sort( rate ), rate, total ];
 
-  log( "< calc_hist: " );
+  log( "< calc_hist()" );
   return ret_val;
 }
 
@@ -244,7 +260,7 @@ function calc_hist( words ) {
 // 候補単語の含まれる文字のヒストグラム
 //
 async function show_used_chars( hist ) {
-  log( "> show_used_chars" );
+  log( "> show_used_chars()" );
 
   let chars = hist.filter( (h) => h.value > 0 );
   let text = ""
@@ -261,7 +277,7 @@ async function show_used_chars( hist ) {
               text
             );
 
-  log( "> show_used_chars" );
+  log( "< show_used_chars()" );
   // 検索結果をさらに絞り込むために効果的な単語をリストする
 }
 
@@ -270,8 +286,9 @@ async function show_used_chars( hist ) {
 // 絞り込みのための候補単語の表示
 //
 async function refine( rate ) {
-  log( "> refine" );
+  log( "> refine()" );
 
+  log( "> DB.forEach" );
   // DB[] の単語に rate で重みを付ける
   let score = {}
   for ( let i = 0; i < DB.length; i++ ) {
@@ -284,7 +301,7 @@ async function refine( rate ) {
     }
     score[ DB[i] ] = s;
   }
-  log( "DB.forEach" );
+  log( "< DB.forEach" );
   // => { けものみち:9, わさびもち:10, ちょっけつ: 8,,, }
 
   log( "> for" );
@@ -325,7 +342,7 @@ async function refine( rate ) {
     await sleep(1);
   }
   update_doc( 'refine_words', refine_doc );
-  log( "< refine" );
+  log( "< refine()" );
 }
 
 //
@@ -333,8 +350,9 @@ async function refine( rate ) {
 // <input>の内容を取り出して grep(), show_used_chars() を呼ぶ
 //
 async function analyze() {
+
   in_analyze = true;
-  log( "start analyze" );
+  log( "> analyze()" );
 
   let pattern = [ '.', '.', '.', '.', '.' ];   // 初期値：なんでもOK
   let blow_c = ''
@@ -373,7 +391,7 @@ async function analyze() {
   // 絞り込みのための候補単語を表示
   await refine( rate );
 
-  log( "return analyze" );
+  log( "< analyze()" );
   in_analyze = false;
 }
 
