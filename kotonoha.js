@@ -251,11 +251,7 @@ async function show_used_chars( hist ) {
   let col  = 6;
   for ( let i = 0; i < chars.length; i += col ) {
     text += chars.slice( i, i + col ).
-      map( (h) => {
-        return ( '    ' + h.value ).
-          split('').reverse().slice(0,4).reverse().join('') +
-          ':' + h.key
-      }).
+      map( (h) => ( '    ' + h.value ).slice( -4 ) + ':' + h.key ).
       join( '　' ).
       replace( must_RE, '<font color="red"><b>$&</b></font>' ) + "<br>";
   }
@@ -299,9 +295,7 @@ async function refine( rate ) {
   for ( let i = 0; i < score_hist.length; i += 3 ) {
     lines.push( score_hist.slice( i, i + 3 ).
                 map( (sc) => {
-                  return ('    ' + sc.value  ).
-                    split('').reverse().slice(0,4).reverse().join('') +
-                    ':' + sc.key;
+                  return ('    ' + sc.value  ).slice( -5 ) +  ':' + sc.key;
                 }).join( '　' )
               );
   }
