@@ -139,28 +139,25 @@ function dic_sort( dic ) {
 }
 
 function update_doc( id, html ) {
-  log( "> update_doc " + id  );
+  log( "update_doc " + id  );
   document.getElementById( id ).innerHTML = html;
-  log( "< update_doc " + id  );
 }
 
 
 //
 //
 //
-var candidate_words   = [];
+var candidate_words = [];
+var must_RE         = null;
 
-async function grep( pattern, hit_c, blow_c, ng_chars ) {
+async function grep( pattern, blow_c, ng_chars ) {
   log( "> grep: " + pattern );
 
   candidate_words.length = 0;
   try {
     let match_re = new RegExp( kataToHira( pattern ) )
     let ng_re    = new RegExp( "[" + kataToHira( ng_chars ) + "]" );
-    let must_re  = new RegExp( "[" +
-                               kataToHira( blow_c + hit_c ) +
-                               hiraToKata( blow_c + hit_c ) +
-                               "]", 'g' );
+
     let blow_a   = blow_c.split('')
     let lines    = [];
     let n        = 0;   // 行数
@@ -208,7 +205,7 @@ async function grep( pattern, hit_c, blow_c, ng_chars ) {
 
     update_doc( 'candidate_words',
                 lines.join( "<br>" ).
-                replace( must_re, '<font color="red"><b>$&</b></font>' )
+                replace( must_RE, '<font color="red"><b>$&</b></font>' )
               );
   } catch (e) {
     // 正規表現の文法エラーを無視する
@@ -244,29 +241,19 @@ function calc_hist( words ) {
 }
 
 //
-// 検索結果の単語の含まれる文字のヒストグラム
+// 候補単語の含まれる文字のヒストグラム
 //
-async function histgram( must_chars ) {
-  log( "> histgram" );
-
-  let total;
-  let hist;
-  [ hist, rate, total ] = calc_hist( candidate_words )
-
-  let rege = new RegExp( '[' + must_chars + ']', 'g' )
+async function show_used_chars( hist ) {
+  log( "> show_used_chars" );
 
   let chars = hist.filter( (h) => h.value > 0 );
   let text = ""
   let col  = 6;
   for ( let i = 0; i < chars.length; i += col ) {
     text += chars.slice( i, i + col ).
-      map( (h) => {
-        return ( '    ' + h.value ).
-          split('').reverse().slice(0,4).reverse().join('') +
-          ':' + h.key
-      }).
+      map( (h) => ( '    ' + h.value ).slice( -4 ) + ':' + h.key ).
       join( '　' ).
-      replace( rege, '<font color="red"><b>$&</b></font>' ) + "<br>";
+      replace( must_RE, '<font color="red"><b>$&</b></font>' ) + "<br>";
   }
 
   // must_chars を赤で表示
@@ -274,23 +261,30 @@ async function histgram( must_chars ) {
               text
             );
 
-  log( "> DB.forEach" );
+  log( "> show_used_chars" );
   // 検索結果をさらに絞り込むために効果的な単語をリストする
+}
 
-  // 一致結果の中で 「当たり」でも「おしい」でもない文字を含む単語
+
+//
+// 絞り込みのための候補単語の表示
+//
+async function refine( rate ) {
+  log( "> refine" );
+
   // DB[] の単語に rate で重みを付ける
   let score = {}
-  DB.forEach( word => {
-    let wd  = kataToHira( word );   // ひらがなに置き換え
-    let wd2 = uniq( wd ).     // 重複文字を排除
-        replace( rege, '' )   // must_chars（ひらがな） を削除
+  for ( let i = 0; i < DB.length; i++ ) {
+    wd = HIRA_DB[i];
+    let wd2 = uniq( wd ).        // 重複文字を排除
+        replace( must_RE, '' )   // must_chars（ひらがな） を削除
     let s   = 0;
     for ( let j =0; j < wd2.length; ++j ) {
       s += rate[ wd2[j] ];
     }
-    score[ wd ] = s;
-  });
-  log( "< DB.forEach" );
+    score[ DB[i] ] = s;
+  }
+  log( "DB.forEach" );
   // => { けものみち:9, わさびもち:10, ちょっけつ: 8,,, }
 
   log( "> for" );
@@ -301,9 +295,7 @@ async function histgram( must_chars ) {
   for ( let i = 0; i < score_hist.length; i += 3 ) {
     lines.push( score_hist.slice( i, i + 3 ).
                 map( (sc) => {
-                  return ('    ' + sc.value  ).
-                    split('').reverse().slice(0,4).reverse().join('') +
-                    ':' + sc.key;
+                  return ('    ' + sc.value  ).slice( -5 ) +  ':' + sc.key;
                 }).join( '　' )
               );
   }
@@ -318,7 +310,7 @@ async function histgram( must_chars ) {
   let unused_chars = KANA_LIST.join('').replace(
     new RegExp( '[' + used_chars + ']', 'g' ),    // 使用文字を削除
     '' );
-  let rege2 = new RegExp( '[' + unused_chars + ']+', 'g' );
+  let unused_re = new RegExp( '[' + unused_chars + hiraToKata(unused_chars) + ']+', 'g' );
 
 
   // 候補単語に色を付ける処理が重たいので
@@ -327,18 +319,18 @@ async function histgram( must_chars ) {
   let sub_len = DB.length / 20;
   for ( let i = 0; i < lines.length; i += sub_len ) {
     refine_doc += lines.slice( i, i + sub_len ).join( "<br>" ).
-      replace( rege, '<font color="red"><b>$&</b></font>' ).
-      replace( rege2, '<font color="orange">$&</font>' ) +
+      replace( must_RE,   '<font color="red"><b>$&</b></font>' ).
+      replace( unused_re, '<font color="orange">$&</font>' ) +
       "<br>"
     await sleep(1);
   }
   update_doc( 'refine_words', refine_doc );
-  log( "< histgram" );
+  log( "< refine" );
 }
 
 //
 // キー入力で呼ばれる
-// <input>の内容を取り出して grep(), histgram() を呼ぶ
+// <input>の内容を取り出して grep(), show_used_chars() を呼ぶ
 //
 async function analyze() {
   in_analyze = true;
@@ -361,12 +353,25 @@ async function analyze() {
     }
   }
 
+  // 必ず含まれる文字の RegEx
+  let must_chars = uniq( kataToHira( blow_c + hit_c ) );
+  must_RE = new RegExp( '[' + must_chars + hiraToKata(must_chars) + ']', 'g' );
+
   // blow_chars を含み、cur_chars[ "none" ]を含まず
   // pattern にマッチする 単語 を調べる
-  await grep( pattern.join(''), hit_c, blow_c, cur_chars[ "none" ] );
+  // => candidate_words
+  await grep( pattern.join(''), blow_c, cur_chars[ "none" ] );
 
-  // 検索結果の単語の含まれる文字のヒストグラム
-  await histgram( uniq( kataToHira(blow_c+hit_c) ) )
+  let hist;
+  let rate;
+  let total;
+  [ hist, rate, total ] = calc_hist( candidate_words );
+
+  // 検索結果の単語に含まれる文字を頻度順に表示
+  await show_used_chars( hist );
+
+  // 絞り込みのための候補単語を表示
+  await refine( rate );
 
   log( "return analyze" );
   in_analyze = false;
