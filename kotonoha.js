@@ -205,6 +205,17 @@ async function grep( pattern, blow_c, ng_chars ) {
       }
     }
 
+    // 候補単語に色を付ける処理が重たいので
+    // 分割処理して、時々 event loop に制御を渡す
+    let candidate_doc = '';
+    let sub_len       = Math.max( 20, lines.length / 10 );
+    for ( let i = 0; i < lines.length; i += sub_len ) {
+      candidate_doc += lines.slice( i, i + sub_len ).join( "<br>" ).
+        replace( must_RE, '<font color="red"><b>$&</b></font>' ) + "<br>"
+      update_doc( 'candidate_words', candidate_doc );
+      await sleep(1);
+    }
+
     let html = '';
     if ( blow_c.length > 0 )
       html += "「" +blow_c + "」を含み、<br>";
@@ -219,10 +230,6 @@ async function grep( pattern, blow_c, ng_chars ) {
 
     update_doc( 'grep_condition',  html );
 
-    update_doc( 'candidate_words',
-                lines.join( "<br>" ).
-                replace( must_RE, '<font color="red"><b>$&</b></font>' )
-              );
   } catch (e) {
     // 正規表現の文法エラーを無視する
     console.log(e)
@@ -339,9 +346,9 @@ async function refine( rate ) {
       replace( must_RE,   '<font color="red"><b>$&</b></font>' ).
       replace( unused_re, '<font color="orange">$&</font>' ) +
       "<br>"
+    update_doc( 'refine_words', refine_doc );
     await sleep(1);
   }
-  update_doc( 'refine_words', refine_doc );
   log( "< refine()" );
 }
 
