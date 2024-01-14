@@ -212,9 +212,9 @@ async function grep( pattern, blow_c, ng_chars ) {
     for ( let i = 0; i < lines.length; i += sub_len ) {
       candidate_doc += lines.slice( i, i + sub_len ).join( "<br>" ).
         replace( must_RE, '<font color="red"><b>$&</b></font>' ) + "<br>"
-      update_doc( 'candidate_words', candidate_doc );
       await sleep(1);
     }
+    update_doc( 'candidate_words', candidate_doc );
 
     let html = '';
     if ( blow_c.length > 0 )
@@ -346,9 +346,9 @@ async function refine( rate ) {
       replace( must_RE,   '<font color="red"><b>$&</b></font>' ).
       replace( unused_re, '<font color="orange">$&</font>' ) +
       "<br>"
-    update_doc( 'refine_words', refine_doc );
     await sleep(1);
   }
+  update_doc( 'refine_words', refine_doc );
   log( "< refine()" );
 }
 
