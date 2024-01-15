@@ -165,6 +165,8 @@ function update_doc( id, html ) {
 //
 var candidate_words = [];
 var must_RE         = null;
+var must_KANA_dic   = {};
+var unused_KANA_dic = {};
 
 async function grep( pattern, blow_c, ng_chars ) {
   log( "> grep( "+ pattern + ")" );
@@ -211,7 +213,7 @@ async function grep( pattern, blow_c, ng_chars ) {
     let sub_len       = Math.max( 20, lines.length / 10 );
     for ( let i = 0; i < lines.length; i += sub_len ) {
       candidate_doc += lines.slice( i, i + sub_len ).join( "<br>" ).
-        replace( must_RE, '<font color="red"><b>$&</b></font>' ) + "<br>"
+        replace( must_RE, '<span class="B">$&</span>' ) + "<br>"
       await sleep(1);
     }
     update_doc( 'candidate_words', candidate_doc );
@@ -276,7 +278,7 @@ async function show_used_chars( hist ) {
     text += chars.slice( i, i + col ).
       map( (h) => ( '    ' + h.value ).slice( -4 ) + ':' + h.key ).
       join( '　' ).
-      replace( must_RE, '<font color="red"><b>$&</b></font>' ) + "<br>";
+      replace( must_RE, '<span class="B">$&</span>' ) + "<br>";
   }
 
   // must_chars を赤で表示
@@ -298,14 +300,14 @@ async function refine( rate ) {
   log( "> DB.forEach" );
   // DB[] の単語に rate で重みを付ける
   let score = {}
+
   for ( let i = 0; i < DB.length; i++ ) {
     wd = HIRA_DB[i];
-    let wd2 = uniq( wd ).        // 重複文字を排除
-        replace( must_RE, '' )   // must_chars（ひらがな） を削除
     let s   = 0;
-    for ( let j =0; j < wd2.length; ++j ) {
-      s += rate[ wd2[j] ];
-    }
+    wd.split('').forEach( ( c ) => {
+      s += must_KANA_dic[ c ] == 0 ? rate[ c ] : 0;
+    });
+
     score[ DB[i] ] = s;
   }
   log( "< DB.forEach" );
@@ -343,8 +345,8 @@ async function refine( rate ) {
   let sub_len = DB.length / 20;
   for ( let i = 0; i < lines.length; i += sub_len ) {
     refine_doc += lines.slice( i, i + sub_len ).join( "<br>" ).
-      replace( must_RE,   '<font color="red"><b>$&</b></font>' ).
-      replace( unused_re, '<font color="orange">$&</font>' ) +
+      replace( must_RE,   '<span class="R">$&</span>' ).
+      replace( unused_re, '<span class="O">$&</span>' ) +
       "<br>"
     await sleep(1);
   }
@@ -380,6 +382,12 @@ async function analyze() {
 
   // 必ず含まれる文字の RegEx
   let must_chars = uniq( kataToHira( blow_c + hit_c ) );
+  KANA_LIST.forEach( (kana) => {
+    must_KANA_dic[ kana ]   = must_chars.indexOf( kana ) >= 0 ? 1: 0;
+    unused_KANA_dic[ kana ] = cur_chars[ "none" ].indexOf( kana ) >= 0 ? 1: 0;
+  });
+  //console.log( must_KANA_dic );
+  //console.log( unused_KANA_dic );
   must_RE = new RegExp( '[' + must_chars + hiraToKata(must_chars) + ']', 'g' );
 
   // blow_chars を含み、cur_chars[ "none" ]を含まず
@@ -387,10 +395,7 @@ async function analyze() {
   // => candidate_words
   await grep( pattern.join(''), blow_c, cur_chars[ "none" ] );
 
-  let hist;
-  let rate;
-  let total;
-  [ hist, rate, total ] = calc_hist( candidate_words );
+  let [ hist, rate, total ] = calc_hist( candidate_words );
 
   // 検索結果の単語に含まれる文字を頻度順に表示
   await show_used_chars( hist );
