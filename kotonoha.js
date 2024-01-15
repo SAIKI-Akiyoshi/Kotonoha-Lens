@@ -166,7 +166,6 @@ function update_doc( id, html ) {
 var candidate_words = [];
 var must_RE         = null;
 var must_KANA_dic   = {};
-var unused_KANA_dic = {};
 
 async function grep( pattern, blow_c, ng_chars ) {
   log( "> grep( "+ pattern + ")" );
@@ -383,7 +382,6 @@ async function analyze() {
   let must_chars = uniq( kataToHira( blow_c + hit_c ) );
   KANA_LIST.forEach( (kana) => {
     must_KANA_dic[ kana ]   = must_chars.indexOf( kana ) >= 0 ? 1: 0;
-    unused_KANA_dic[ kana ] = cur_chars[ "none" ].indexOf( kana ) >= 0 ? 1: 0;
   });
   //console.log( must_KANA_dic );
   //console.log( unused_KANA_dic );
