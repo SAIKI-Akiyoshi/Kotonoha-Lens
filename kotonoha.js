@@ -302,9 +302,8 @@ async function refine( rate ) {
   let score = {}
 
   for ( let i = 0; i < DB.length; i++ ) {
-    wd = HIRA_DB[i];
     let s   = 0;
-    wd.split('').forEach( ( c ) => {
+    uniq( HIRA_DB[i] ).split('').forEach( ( c ) => {
       s += must_KANA_dic[ c ] == 0 ? rate[ c ] : 0;
     });
 
