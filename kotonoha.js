@@ -316,18 +316,20 @@ async function refine( rate ) {
   // 検索結果の中の candidate_words に含まれない文字をorange表示
   // するための RegExp => rege2
   let candidate_chars   = uniq_str( kataToHira( candidate_words.join('') ) );
-  let used_chars        = candidate_chars.replace( must_RE, '' );
-  let used_re = new RegExp( '['+ used_chars + hiraToKata(used_chars) +']+', 'g' );
 
-  // 候補単語に色を付ける処理が重たいので
-  // 分割処理して、時々 event loop に制御を渡す
+  let unused_chars = KANA_LIST.join('').replace(
+    new RegExp( '[' + candidate_chars + ']', 'g' ),    // 候補単語の文字を削除
+    '' );
+  let unused_re = new RegExp( '[' + unused_chars + hiraToKata(unused_chars) + ']+', 'g' );
+
+  // 候補単語に色を付ける処理が重たいので、分割処理して時々 event loop に制御を渡す
   let refine_doc = "";
   let sub_len = Math.floor( DB.length / 20 );
   for ( let i = 0; i < lines.length; i += sub_len ) {
     log( "make refine_doc: " + ( "    " + i ).slice(-4) + "/" + lines.length );
     refine_doc += lines.slice( i, i + sub_len ).join( "<br>" ).
-      replace( must_RE, '<span class="R">$&</span>' ).
-      replace( used_re, '<span class="O">$&</span>' ) +
+      replace( must_RE,   '<span class="R">$&</span>' ).
+      replace( unused_re, '<span class="O">$&</span>' ) +
       "<br>"
     await sleep(1);
   }
@@ -362,8 +364,6 @@ async function analyze() {
   KANA_LIST.forEach( (kana) => {
     must_KANA_dic[ kana ]   = must_chars.indexOf( kana ) >= 0 ? 1: 0;
   });
-  //console.log( must_KANA_dic );
-  //console.log( unused_KANA_dic );
   must_RE = new RegExp( '[' + must_chars + hiraToKata(must_chars) + ']', 'g' );
 
   // blow_chars を含み、cur_chars[ "none" ]を含まず
