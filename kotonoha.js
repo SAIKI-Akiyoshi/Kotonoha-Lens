@@ -161,6 +161,7 @@ function check_input() {
       }
     });
     if ( changed ) {
+      in_analyze = true;
       analyze();
     }
 
@@ -179,6 +180,7 @@ function update_doc( id, html ) {
 //
 //
 var candidate_words = [];
+var candidate_chars = [];
 var must_RE         = null;
 var must_KANA_dic   = {};
 
@@ -186,6 +188,7 @@ async function grep( pattern, blow_c, ng_chars ) {
   log( "> grep( "+ pattern + ")" );
 
   candidate_words.length = 0;
+  candidate_chars.length = 0;
 
   try {
     let match_re = new RegExp( kataToHira( pattern ) )
@@ -211,6 +214,7 @@ async function grep( pattern, blow_c, ng_chars ) {
 
         // 候補単語に追加
         candidate_words.push( DB[i] );
+        candidate_chars  = uniq( candidate_chars.concat( HIRA_DBa[i] ) );
         // ５単語 単位で改行
         if ( ( candidate_words.length - 1 ) % 5 == 0 ) {      // 行頭
           lines.push( DB[i] );
@@ -315,10 +319,9 @@ async function refine( rate ) {
 
   // 検索結果の中の candidate_words に含まれない文字をorange表示
   // するための RegExp => rege2
-  let candidate_chars   = uniq_str( kataToHira( candidate_words.join('') ) );
-
+  // 候補単語の文字を削除
   let unused_chars = KANA_LIST.join('').replace(
-    new RegExp( '[' + candidate_chars + ']', 'g' ),    // 候補単語の文字を削除
+    new RegExp( '[' + candidate_chars.join('') + ']', 'g' ),
     '' );
   let unused_re = new RegExp( '[' + unused_chars + hiraToKata(unused_chars) + ']+', 'g' );
 
@@ -342,10 +345,7 @@ async function refine( rate ) {
 // <input>の内容を取り出して grep(), show_used_chars() を呼ぶ
 //
 async function analyze() {
-
-  in_analyze = true;
   log( "> analyze()" );
-
 
   let hit_c   = [1,2,3,4,5].map( i => cur_chars[ "hit_"  + i ] ).join('');
   let blow_c  = [1,2,3,4,5].map( i => cur_chars[ "blow_" + i ] ).join('');
@@ -378,15 +378,9 @@ async function analyze() {
   //
   log( "> calc_hist()" );
   let rate  = {};
-  let total = 0;
   KANA_LIST.forEach( kana => rate[ kana ] = 0 );
-
   candidate_words.forEach( word => {
-    wd = kataToHira( word );
-    for ( let j = 0; j < wd.length; j++ ) {
-      rate[ wd[j] ] ++;
-      total ++;
-    }
+    kataToHira( word ).split('').forEach( c => rate[c]++ );
   });
 
   let hist = dic_sort( rate );
