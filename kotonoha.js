@@ -6,11 +6,11 @@ function log( msg ) {
     start_t = new Date().getTime();
   }
   else {
-    if ( msg[0] == '>' )  log_indent += 2;
-    let diff  = new Date().getTime() - start_t;
-    let space = "                 ".slice(0,log_indent);
-    console.log( "%3d: %s%s", diff, space, msg );
     if ( msg[0] == '<' )  log_indent -= 2;
+    let diff  = new Date().getTime() - start_t;
+    let space = "                 ".slice( 0, log_indent );
+    console.log( "%s: %s%s", ("  " + diff).slice(-3), space, msg );
+    if ( msg[0] == '>' )  log_indent += 2;
   }
 }
 
@@ -41,9 +41,15 @@ function uniq_str( str ) {
 
 // 連想配列をソートして Array を返す
 function dic_sort( dic ) {
-  let array = Object.keys( dic ).map((k)=>({ key: k, value: dic[k] }));
+  log( "> dic_sort()" );
+
+  let keys = Object.keys( dic );
+  log( "size = " + keys.length );
+
+  let array = keys.map((k)=>({ key: k, value: dic[k] }));
   array.sort( (a, b) => b.value - a.value );  // reverse
 
+  log( "<" );
   return array;
 }
 
@@ -187,7 +193,7 @@ async function grep( pattern, blow_c, ng_chars ) {
 
     let blow_a   = blow_c.split('')
     let lines    = [];
-    let step     = DB.length / 10;
+    let step     = Math.floor( DB.length / 10 );
 
     for ( let i = 0; i < DB.length; ++i ) {
       // 8000回ループの間、時々 event loopに制御を渡す
@@ -244,32 +250,6 @@ async function grep( pattern, blow_c, ng_chars ) {
   log( "< grep()" );
 }
 
-// words[] の中の文字の出現頻度を調べる
-//  rate : { k1:v1, k2:v2, ,,, ]    key と その出現回数
-//  hist : [{km:vm}, {kn:vn} ....]     <= rate を配列にして sort
-//  total : v1 + v2 + ...
-//
-function calc_hist( words ) {
-  log( "> calc_hist()" );
-
-  let rate  = {};
-  let total = 0;
-  KANA_LIST.forEach( kana => rate[ kana ] = 0 );
-
-  words.forEach( word => {
-    wd = kataToHira( word );
-    for ( let j = 0; j < wd.length; j++ ) {
-      rate[ wd[j] ] ++;
-      total ++;
-    }
-  });
-
-  ret_val = [ dic_sort( rate ), rate, total ];
-
-  log( "< calc_hist()" );
-  return ret_val;
-}
-
 //
 // 候補単語の含まれる文字のヒストグラム
 //
@@ -316,11 +296,11 @@ async function refine( rate ) {
   log( "< DB.forEach" );
   // => { けものみち:9, わさびもち:10, ちょっけつ: 8,,, }
 
-  log( "> for" );
   // 重みでソート、重みゼロをフィルタリング
   // 行単位でスライス
   let score_hist = dic_sort( score );
   let lines = [];
+  log( "> make lines" );
   for ( let i = 0; i < score_hist.length; i += 3 ) {
     lines.push( score_hist.slice( i, i + 3 ).
                 map( (sc) => {
@@ -328,7 +308,7 @@ async function refine( rate ) {
                 }).join( '　' )
               );
   }
-  log( "< for" );
+  log( "<" );
   // => " 10:わさびもち　9:おともだち　9: けものみち"
   //    "  8:ちょっけつ
   //
@@ -342,8 +322,9 @@ async function refine( rate ) {
   // 候補単語に色を付ける処理が重たいので
   // 分割処理して、時々 event loop に制御を渡す
   let refine_doc = "";
-  let sub_len = DB.length / 20;
+  let sub_len = Math.floor( DB.length / 20 );
   for ( let i = 0; i < lines.length; i += sub_len ) {
+    log( "make refine_doc: " + ( "    " + i ).slice(-4) + "/" + lines.length );
     refine_doc += lines.slice( i, i + sub_len ).join( "<br>" ).
       replace( must_RE, '<span class="R">$&</span>' ).
       replace( used_re, '<span class="O">$&</span>' ) +
@@ -390,7 +371,27 @@ async function analyze() {
   // => candidate_words
   await grep( pattern, blow_c, ng_chars );
 
-  let [ hist, rate, total ] = calc_hist( candidate_words );
+  // words[] の中の文字の出現頻度を調べる
+  //  rate : { k1:v1, k2:v2, ,,, ]    key と その出現回数
+  //  hist : [{km:vm}, {kn:vn} ....]     <= rate を配列にして sort
+  //  total : v1 + v2 + ...
+  //
+  log( "> calc_hist()" );
+  let rate  = {};
+  let total = 0;
+  KANA_LIST.forEach( kana => rate[ kana ] = 0 );
+
+  candidate_words.forEach( word => {
+    wd = kataToHira( word );
+    for ( let j = 0; j < wd.length; j++ ) {
+      rate[ wd[j] ] ++;
+      total ++;
+    }
+  });
+
+  let hist = dic_sort( rate );
+  log( "< calc_hist()" );
+
 
   // 検索結果の単語に含まれる文字を頻度順に表示
   await show_used_chars( hist );
