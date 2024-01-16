@@ -180,13 +180,13 @@ async function grep( pattern, blow_c, ng_chars ) {
   log( "> grep( "+ pattern + ")" );
 
   candidate_words.length = 0;
+
   try {
     let match_re = new RegExp( kataToHira( pattern ) )
     let ng_re    = new RegExp( "[" + kataToHira( ng_chars ) + "]" );
 
     let blow_a   = blow_c.split('')
     let lines    = [];
-    let n        = 0;   // 行数
     let step     = DB.length / 10;
 
     for ( let i = 0; i < DB.length; ++i ) {
@@ -206,7 +206,7 @@ async function grep( pattern, blow_c, ng_chars ) {
         // 候補単語に追加
         candidate_words.push( DB[i] );
         // ５単語 単位で改行
-        if ( n++ % 5 == 0 ) {      // 行頭
+        if ( ( candidate_words.length - 1 ) % 5 == 0 ) {      // 行頭
           lines.push( DB[i] );
         }
         else {
@@ -214,6 +214,17 @@ async function grep( pattern, blow_c, ng_chars ) {
         }
       }
     }
+
+    let html = [
+      ( blow_c.length > 0   )? ( "「" + blow_c + "」を含み、<br>" )     : '',
+      ( ng_chars.length > 0 )? ( "「" + ng_chars + "」を含まず、<br>" ) : '',
+      "'",
+      pattern.replace(/\./g,'・').replace( /\[(.)\]/g, "$1" ),
+      "' に一致する候補：",
+      candidate_words.length + "件<br>"
+    ].join('');
+
+    update_doc( 'grep_condition',  html );
 
     // 候補単語に色を付ける処理が重たいので
     // 分割処理して、時々 event loop に制御を渡す
@@ -225,20 +236,6 @@ async function grep( pattern, blow_c, ng_chars ) {
       await sleep(1);
     }
     update_doc( 'candidate_words', candidate_doc );
-
-    let html = '';
-    if ( blow_c.length > 0 )
-      html += "「" +blow_c + "」を含み、<br>";
-    if ( ng_chars.length > 0 )
-      html += "「" + ng_chars + "」を含まず、<br>";
-
-    html +=
-      "'" +
-      pattern.replace(/\./g,'・').replace( /\[(.)\]/g, "$1" ) +
-      "' に一致する候補："
-      + n + "件<br>"
-
-    update_doc( 'grep_condition',  html );
 
   } catch (e) {
     // 正規表現の文法エラーを無視する
@@ -340,7 +337,7 @@ async function refine( rate ) {
   // するための RegExp => rege2
   let candidate_chars   = uniq_str( kataToHira( candidate_words.join('') ) );
   let used_chars        = candidate_chars.replace( must_RE, '' );
-  let used_re = new RegExp( '[' + used_chars + hiraToKata(used_chars) + ']+', 'g' );
+  let used_re = new RegExp( '['+ used_chars + hiraToKata(used_chars) +']+', 'g' );
 
   // 候補単語に色を付ける処理が重たいので
   // 分割処理して、時々 event loop に制御を渡す
@@ -348,7 +345,7 @@ async function refine( rate ) {
   let sub_len = DB.length / 20;
   for ( let i = 0; i < lines.length; i += sub_len ) {
     refine_doc += lines.slice( i, i + sub_len ).join( "<br>" ).
-      replace( must_RE,   '<span class="R">$&</span>' ).
+      replace( must_RE, '<span class="R">$&</span>' ).
       replace( used_re, '<span class="O">$&</span>' ) +
       "<br>"
     await sleep(1);
@@ -366,22 +363,18 @@ async function analyze() {
   in_analyze = true;
   log( "> analyze()" );
 
-  let pattern = [ '.', '.', '.', '.', '.' ];   // 初期値：なんでもOK
-  let blow_c = ''
-  let hit_c  = ''
 
-  for ( let i = 0; i < 5; ++i ) {
-    let mc = cur_chars[ "hit_"  + (i + 1) ];   // 当たりの文字
-    let bc = cur_chars[ "blow_" + (i + 1) ];   // おしい文字
-    hit_c  += mc;
-    blow_c += bc;
-    if ( mc.length > 0 ) {
-      pattern[ i ] = '[' + mc + ']'          // そこに含まれる
-    }
-    else if ( bc.length > 0 ) {
-      pattern[ i ] = '[^' + bc + ']';        // そこには含まれない
-    }
-  }
+  let hit_c   = [1,2,3,4,5].map( i => cur_chars[ "hit_"  + i ] ).join('');
+  let blow_c  = [1,2,3,4,5].map( i => cur_chars[ "blow_" + i ] ).join('');
+  let pattern = [1,2,3,4,5].map( i => {
+    let hc = cur_chars[ "hit_"  + i ];   // 当たりの文字
+    let bc = cur_chars[ "blow_" + i ];   // おしい文字
+
+    return ( hc.length > 0 )? ( '['  + hc + ']' ) : // そこに含まれる
+           ( bc.length > 0 )? ( '[^' + bc + ']' ) : // そこには含まれない
+           '.';                                     // なんでもOK
+  }).join('');
+  let ng_chars = cur_chars[ "none" ];
 
   // 必ず含まれる文字の RegEx
   let must_chars = uniq_str( kataToHira( blow_c + hit_c ) );
@@ -395,7 +388,7 @@ async function analyze() {
   // blow_chars を含み、cur_chars[ "none" ]を含まず
   // pattern にマッチする 単語 を調べる
   // => candidate_words
-  await grep( pattern.join(''), blow_c, cur_chars[ "none" ] );
+  await grep( pattern, blow_c, ng_chars );
 
   let [ hist, rate, total ] = calc_hist( candidate_words );
 
