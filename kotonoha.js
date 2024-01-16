@@ -14,6 +14,39 @@ function log( msg ) {
   }
 }
 
+// カタカナ -> ひらがな
+function kataToHira( str ) {
+  return  str.replace(/[\u30A1-\u30FA]/g, ch =>
+    String.fromCharCode(ch.charCodeAt(0) - 0x60)
+  );
+}
+
+// ひらがな -> カタカナ
+function hiraToKata(str) {
+  return str.replace(/[\u3041-\u3096]/g, ch =>
+    String.fromCharCode(ch.charCodeAt(0) + 0x60)
+  );
+}
+
+// 配列の重複を取り除く
+// [ 'あ', 'あ', 'い', 'う', 'え', 'え', 'あ'] -> ['あ','い','う','え']
+function uniq( a ) {
+  let set = new Set( a );
+  return  Array.from( set ).sort();
+}
+
+function uniq_str( str ) {
+  return uniq( str.split( '' ) ).join( '' );
+}
+
+// 連想配列をソートして Array を返す
+function dic_sort( dic ) {
+  let array = Object.keys( dic ).map((k)=>({ key: k, value: dic[k] }));
+  array.sort( (a, b) => b.value - a.value );  // reverse
+
+  return array;
+}
+
 const sleep = (msec) => {
   return new Promise(function (resolve) {
     setTimeout(function () {
@@ -53,7 +86,8 @@ var NON_KANA_REGE = new RegExp( "[^" +
                                 kataToHira( KANA_LIST.join('') ) +
                                 "]" );
 var DB = [];
-var HIRA_DB = [];
+var HIRA_DB  = [];
+var HIRA_DBa = [];
 
 var in_analyze = false;
 
@@ -71,7 +105,6 @@ log( "> start");
     if ( words.length == 1 && words[0].length == 5 ) { // 5文字
       // かわりもの
       DB.push( words[0] );
-      HIRA_DB.push( kataToHira( words[0] ) )
     }
     else if ( words.length > 0 ) {
       //かん　きゃく　きゅう　きょう
@@ -81,10 +114,15 @@ log( "> start");
       }
       words.forEach( wd => {
         DB.push( lead + wd );
-        HIRA_DB.push( kataToHira( lead + wd ) );
       });
     }
   });
+
+  for ( let i = 0; i < DB.length; i++ ) {
+    let wd = kataToHira( DB[i] );
+    HIRA_DB.push( wd );
+    HIRA_DBa.push( uniq( wd.split( '' ) ) );
+  }
 
   Object.keys(cur_chars).forEach( id => {
     let btn = document.getElementById( id )
@@ -122,35 +160,6 @@ function check_input() {
 
     log( "< check_input()" );
   }
-}
-
-// カタカナ -> ひらがな
-function kataToHira( str ) {
-  return  str.replace(/[\u30A1-\u30FA]/g, ch =>
-    String.fromCharCode(ch.charCodeAt(0) - 0x60)
-  );
-}
-
-// ひらがな -> カタカナ
-function hiraToKata(str) {
-  return str.replace(/[\u3041-\u3096]/g, ch =>
-    String.fromCharCode(ch.charCodeAt(0) + 0x60)
-  );
-}
-
-// 文字列の重複を取り除く
-// ああいうええあ -> あいうえ
-function uniq( str ) {
-  let set = new Set( str.split('') );
-  return  Array.from( set ).sort().join( '' );
-}
-
-// 連想配列をソートして Array を返す
-function dic_sort( dic ) {
-  let array = Object.keys( dic ).map((k)=>({ key: k, value: dic[k] }));
-  array.sort( (a, b) => b.value - a.value );  // reverse
-
-  return array;
 }
 
 function update_doc( id, html ) {
@@ -302,11 +311,10 @@ async function refine( rate ) {
 
   for ( let i = 0; i < DB.length; i++ ) {
     let s   = 0;
-    uniq( HIRA_DB[i] ).split('').forEach( ( c ) => {
+    HIRA_DBa[i].forEach( ( c ) => {
       s += must_KANA_dic[ c ] == 0 ? rate[ c ] : 0;
     });
-
-    score[ DB[i] ] = s;
+    if ( s > 0 ) score[ DB[i] ] = s;
   }
   log( "< DB.forEach" );
   // => { けものみち:9, わさびもち:10, ちょっけつ: 8,,, }
@@ -314,7 +322,7 @@ async function refine( rate ) {
   log( "> for" );
   // 重みでソート、重みゼロをフィルタリング
   // 行単位でスライス
-  let score_hist = dic_sort( score ).filter( (sc) => sc.value > 0 );
+  let score_hist = dic_sort( score );
   let lines = [];
   for ( let i = 0; i < score_hist.length; i += 3 ) {
     lines.push( score_hist.slice( i, i + 3 ).
@@ -330,12 +338,9 @@ async function refine( rate ) {
 
   // 検索結果の中の candidate_words に含まれない文字をorange表示
   // するための RegExp => rege2
-  let used_chars = kataToHira( uniq( candidate_words.join('') ) );
-  let unused_chars = KANA_LIST.join('').replace(
-    new RegExp( '[' + used_chars + ']', 'g' ),    // 使用文字を削除
-    '' );
-  let unused_re = new RegExp( '[' + unused_chars + hiraToKata(unused_chars) + ']+', 'g' );
-
+  let candidate_chars   = uniq_str( kataToHira( candidate_words.join('') ) );
+  let used_chars        = candidate_chars.replace( must_RE, '' );
+  let used_re = new RegExp( '[' + used_chars + hiraToKata(used_chars) + ']+', 'g' );
 
   // 候補単語に色を付ける処理が重たいので
   // 分割処理して、時々 event loop に制御を渡す
@@ -344,7 +349,7 @@ async function refine( rate ) {
   for ( let i = 0; i < lines.length; i += sub_len ) {
     refine_doc += lines.slice( i, i + sub_len ).join( "<br>" ).
       replace( must_RE,   '<span class="R">$&</span>' ).
-      replace( unused_re, '<span class="O">$&</span>' ) +
+      replace( used_re, '<span class="O">$&</span>' ) +
       "<br>"
     await sleep(1);
   }
@@ -379,7 +384,7 @@ async function analyze() {
   }
 
   // 必ず含まれる文字の RegEx
-  let must_chars = uniq( kataToHira( blow_c + hit_c ) );
+  let must_chars = uniq_str( kataToHira( blow_c + hit_c ) );
   KANA_LIST.forEach( (kana) => {
     must_KANA_dic[ kana ]   = must_chars.indexOf( kana ) >= 0 ? 1: 0;
   });
