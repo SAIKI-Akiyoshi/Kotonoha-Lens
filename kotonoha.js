@@ -89,7 +89,7 @@ var KANA_REGE = new RegExp( "[" +
 
 var NON_KANA_REGE = new RegExp( "[^" +
                                 KANA_LIST.join('') +
-                                kataToHira( KANA_LIST.join('') ) +
+                                hiraToKata( KANA_LIST.join('') ) +
                                 "]" );
 var DB = [];
 var HIRA_DB  = [];
@@ -156,7 +156,7 @@ function check_input() {
         // かな以外の文字が含まれている場合は analyze() を呼ばない
         if ( c.search( NON_KANA_REGE ) == -1 )  {
           changed = true;
-          cur_chars[ id ] = c;
+          cur_chars[ id ] = kataToHira( c );
         }
       }
     });
@@ -179,22 +179,21 @@ function update_doc( id, html ) {
 //
 //
 //
-var candidate_words = [];
-var candidate_chars = [];
+var candidate_chars = {};
 var must_RE         = null;
 var must_KANA_dic   = {};
 
-async function grep( pattern, blow_c, ng_chars ) {
+async function grep( pattern, blow_chars, ng_chars ) {
   log( "> grep( "+ pattern + ")" );
 
-  candidate_words.length = 0;
-  candidate_chars.length = 0;
+  let candidate_words = [];
+  candidate_chars = {};
 
   try {
     let match_re = new RegExp( kataToHira( pattern ) )
     let ng_re    = new RegExp( "[" + kataToHira( ng_chars ) + "]" );
 
-    let blow_a   = blow_c.split('')
+    let blow_a   = blow_chars.split('')
     let lines    = [];
     let step     = Math.floor( DB.length / 10 );
 
@@ -214,7 +213,10 @@ async function grep( pattern, blow_c, ng_chars ) {
 
         // 候補単語に追加
         candidate_words.push( DB[i] );
-        candidate_chars  = uniq( candidate_chars.concat( HIRA_DBa[i] ) );
+        // 文字の使用頻度
+        HIRA_DBa[i].forEach( c => {
+          candidate_chars[c] = ( candidate_chars[c] || 0 ) + 1;
+        });
         // ５単語 単位で改行
         if ( ( candidate_words.length - 1 ) % 5 == 0 ) {      // 行頭
           lines.push( DB[i] );
@@ -226,8 +228,8 @@ async function grep( pattern, blow_c, ng_chars ) {
     }
 
     let html = [
-      ( blow_c.length > 0   )? ( "「" + blow_c + "」を含み、<br>" )     : '',
-      ( ng_chars.length > 0 )? ( "「" + ng_chars + "」を含まず、<br>" ) : '',
+      ( blow_chars.length > 0 )? ( "「" + blow_chars + "」を含み、<br>" ) : '',
+      ( ng_chars.length > 0   )? ( "「" + ng_chars + "」を含まず、<br>" ) : '',
       "'",
       pattern.replace(/\./g,'・').replace( /\[(.)\]/g, "$1" ),
       "' に一致する候補：",
@@ -257,10 +259,13 @@ async function grep( pattern, blow_c, ng_chars ) {
 //
 // 候補単語の含まれる文字のヒストグラム
 //
-async function show_used_chars( hist ) {
+async function show_used_chars() {
   log( "> show_used_chars()" );
 
-  let chars = hist.filter( (h) => h.value > 0 );
+  //  candidate_chars : { k1:v1, k2:v2, ,,, ]    c と その出現回数
+  //  dic_sort : [{km:vm}, {kn:vn} ....]     <= {k:v} の配列にして v でsort
+  //
+  let chars = dic_sort( candidate_chars );
   let text = ""
   let col  = 6;
   for ( let i = 0; i < chars.length; i += col ) {
@@ -283,7 +288,7 @@ async function show_used_chars( hist ) {
 //
 // 絞り込みのための候補単語の表示
 //
-async function refine( rate ) {
+async function refine() {
   log( "> refine()" );
 
   log( "> DB.forEach" );
@@ -293,7 +298,7 @@ async function refine( rate ) {
   for ( let i = 0; i < DB.length; i++ ) {
     let s   = 0;
     HIRA_DBa[i].forEach( ( c ) => {
-      s += must_KANA_dic[ c ] == 0 ? rate[ c ] : 0;
+      s += ( must_KANA_dic[ c ] == 0 )? ( candidate_chars[c] || 0 ) : 0;
     });
     if ( s > 0 ) score[ DB[i] ] = s;
   }
@@ -321,7 +326,7 @@ async function refine( rate ) {
   // するための RegExp => rege2
   // 候補単語の文字を削除
   let unused_chars = KANA_LIST.join('').replace(
-    new RegExp( '[' + candidate_chars.join('') + ']', 'g' ),
+    new RegExp( '[' + Object.keys( candidate_chars ) + ']', 'g' ),
     '' );
   let unused_re = new RegExp( '[' + unused_chars + hiraToKata(unused_chars) + ']+', 'g' );
 
@@ -346,52 +351,35 @@ async function refine( rate ) {
 //
 async function analyze() {
   log( "> analyze()" );
+  let h = (i) => cur_chars[ "hit_"  + i ];  // 当たりの文字
+  let b = (i) => cur_chars[ "blow_" + i ];  // おしい文字
 
-  let hit_c   = [1,2,3,4,5].map( i => cur_chars[ "hit_"  + i ] ).join('');
-  let blow_c  = [1,2,3,4,5].map( i => cur_chars[ "blow_" + i ] ).join('');
-  let pattern = [1,2,3,4,5].map( i => {
-    let hc = cur_chars[ "hit_"  + i ];   // 当たりの文字
-    let bc = cur_chars[ "blow_" + i ];   // おしい文字
-
-    return ( hc.length > 0 )? ( '['  + hc + ']' ) : // そこに含まれる
-           ( bc.length > 0 )? ( '[^' + bc + ']' ) : // そこには含まれない
-           '.';                                     // なんでもOK
-  }).join('');
+  let hit_c  =  [1,2,3,4,5].map( i => h(i) ).join('');
+  let blow_c =  [1,2,3,4,5].map( i => b(i) ).join('');
+  let pattern = [1,2,3,4,5].map( i =>
+    ( h(i).length > 0 )? ( '['  + h(i) + ']' ) : //そこに含まれる
+    ( b(i).length > 0 )? ( '[^' + b(i) + ']' ) : // そこには含まれない
+    '.'                                          // なんでもOK
+  ).join('');
   let ng_chars = cur_chars[ "none" ];
 
   // 必ず含まれる文字の RegEx
-  let must_chars = uniq_str( kataToHira( blow_c + hit_c ) );
-  KANA_LIST.forEach( (kana) => {
-    must_KANA_dic[ kana ]   = must_chars.indexOf( kana ) >= 0 ? 1: 0;
+  let must_chars = uniq_str( hit_c + blow_c );
+  KANA_LIST.forEach( c => {
+    must_KANA_dic[ c ]  = must_chars.indexOf( c ) >= 0 ? 1: 0;
   });
   must_RE = new RegExp( '[' + must_chars + hiraToKata(must_chars) + ']', 'g' );
 
   // blow_chars を含み、cur_chars[ "none" ]を含まず
   // pattern にマッチする 単語 を調べる
-  // => candidate_words
+  // その単語に含まれる文字 => candidate_chars
   await grep( pattern, blow_c, ng_chars );
 
-  // words[] の中の文字の出現頻度を調べる
-  //  rate : { k1:v1, k2:v2, ,,, ]    key と その出現回数
-  //  hist : [{km:vm}, {kn:vn} ....]     <= rate を配列にして sort
-  //  total : v1 + v2 + ...
-  //
-  log( "> calc_hist()" );
-  let rate  = {};
-  KANA_LIST.forEach( kana => rate[ kana ] = 0 );
-  candidate_words.forEach( word => {
-    kataToHira( word ).split('').forEach( c => rate[c]++ );
-  });
-
-  let hist = dic_sort( rate );
-  log( "< calc_hist()" );
-
-
-  // 検索結果の単語に含まれる文字を頻度順に表示
-  await show_used_chars( hist );
+  // 検索結果の単語に含まれる文字(candidate_chars)を頻度順に表示
+  await show_used_chars();
 
   // 絞り込みのための候補単語を表示
-  await refine( rate );
+  await refine();
 
   log( "< analyze()" );
   in_analyze = false;
