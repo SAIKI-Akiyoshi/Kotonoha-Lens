@@ -46,7 +46,7 @@ function dic_sort( dic ) {
   let keys = Object.keys( dic );
   log( "size = " + keys.length );
 
-  let array = keys.map((k)=>({ key: k, value: dic[k] }));
+  let array = keys.map( k => ({ key: k, value: dic[k] }) );
   array.sort( (a, b) => b.value - a.value );  // reverse
 
   log( "<" );
@@ -81,11 +81,6 @@ var  KANA_LIST =
      だぢづでど  ばびぶべぼ
      ぱぴぷぺぽ  ぁぃぅぇぉ
      っゃゅょ    んー`.replace( /\s+/g, '' ).split('');
-
-var KANA_REGE = new RegExp( "[" +
-                            KANA_LIST.join('') +
-                            kataToHira( KANA_LIST.join('') ) +
-                            "]" );
 
 var NON_KANA_REGE = new RegExp( "[^" +
                                 KANA_LIST.join('') +
@@ -143,30 +138,28 @@ function check_input() {
   if ( in_analyze ) {
     console.log( "IN ANALYZE" );
     setTimeout( check_input, 300 ); // 少し待って再トライ
+    return;
   }
-  else {
-    log( '' );
-    log( "> check_input()" );
 
-    // input欄の内容を読み込んで analyze() を呼ぶ
-    let changed = false;
-    Object.keys(cur_chars).forEach( id => {
-      let c = document.getElementById( id ).value;
-      if ( c != cur_chars[ id ] ) {
-        // かな以外の文字が含まれている場合は analyze() を呼ばない
-        if ( c.search( NON_KANA_REGE ) == -1 )  {
-          changed = true;
-          cur_chars[ id ] = kataToHira( c );
-        }
-      }
-    });
-    if ( changed ) {
-      in_analyze = true;
-      analyze();
+  log( '' );
+  log( "> check_input()" );
+
+  // input欄の内容を読み込んで analyze() を呼ぶ
+  let changed = false;
+  Object.keys(cur_chars).forEach( id => {
+    let str = document.getElementById( id ).value;
+    if ( str != cur_chars[ id ] && str.search( NON_KANA_REGE ) == -1 )  {
+      // かな以外の文字が含まれている場合は analyze() を呼ばない
+      changed = true;
+      cur_chars[ id ] = kataToHira( str );
     }
-
-    log( "< check_input()" );
+  });
+  if ( changed ) {
+    in_analyze = true;
+    analyze();
   }
+
+  log( "< check_input()" );
 }
 
 function update_doc( id, html ) {
@@ -189,70 +182,65 @@ async function grep( pattern, blow_chars, ng_chars ) {
   let candidate_words = [];
   candidate_chars = {};
 
-  try {
-    let match_re = new RegExp( kataToHira( pattern ) )
-    let ng_re    = new RegExp( "[" + kataToHira( ng_chars ) + "]" );
+  let match_re = new RegExp( kataToHira( pattern ) )
+  let ng_re    = new RegExp( "[" + kataToHira( ng_chars ) + "]" );
 
-    let blow_a   = blow_chars.split('')
-    let lines    = [];
-    let step     = Math.floor( DB.length / 10 );
+  let blow_a   = blow_chars.split('')
+  let lines    = [];
+  let step     = Math.floor( DB.length / 10 );
 
-    for ( let i = 0; i < DB.length; ++i ) {
-      // 8000回ループの間、時々 event loopに制御を渡す
-      if ( i % step == 0 ) { await sleep(1); }
+  for ( let i = 0; i < DB.length; ++i ) {
+    // 8000回ループの間、時々 event loopに制御を渡す
+    if ( i % step == 0 ) { await sleep(1); }
 
-      let wd = HIRA_DB[i];
+    let wd = HIRA_DB[i];
 
-      if (
-        // おしい文字全てが含まれている
-        ( blow_a.length == 0 || blow_a.every( (c) => wd.indexOf(c) >= 0 ) ) &&
-          // どの NG 文字にも一致しない
-        ( ng_chars.length == 0 || wd.search( ng_re ) == -1 ) &&
-          // 検索パターンに一致
-        ( wd.search( match_re ) >= 0 ) ) {
+    if (
+      // おしい文字全てが含まれている
+      ( blow_a.length == 0 || blow_a.every( (c) => wd.indexOf(c) >= 0 ) ) &&
+        // どの NG 文字にも一致しない
+      ( ng_chars.length == 0 || wd.search( ng_re ) == -1 ) &&
+        // 検索パターンに一致
+      ( wd.search( match_re ) >= 0 ) ) {
 
-        // 候補単語に追加
-        candidate_words.push( DB[i] );
-        // 文字の使用頻度
-        HIRA_DBa[i].forEach( c => {
-          candidate_chars[c] = ( candidate_chars[c] || 0 ) + 1;
-        });
-        // ５単語 単位で改行
-        if ( ( candidate_words.length - 1 ) % 5 == 0 ) {      // 行頭
-          lines.push( DB[i] );
-        }
-        else {
-          lines[ lines.length - 1 ] += "　" + DB[i];  // 空白に続けて追加
-        }
+      // 候補単語に追加
+      candidate_words.push( DB[i] );
+      // 文字の使用頻度
+      HIRA_DBa[i].forEach( c => {
+        candidate_chars[c] = ( candidate_chars[c] || 0 ) + 1;
+      });
+      // ５単語 単位で改行
+      if ( ( candidate_words.length - 1 ) % 5 == 0 ) {      // 行頭
+        lines.push( DB[i] );
+      }
+      else {
+        lines[ lines.length - 1 ] += "　" + DB[i];  // 空白に続けて追加
       }
     }
-
-    let html = [
-      ( blow_chars.length > 0 )? ( "「" + blow_chars + "」を含み、<br>" ) : '',
-      ( ng_chars.length > 0   )? ( "「" + ng_chars + "」を含まず、<br>" ) : '',
-      "'",
-      pattern.replace(/\./g,'・').replace( /\[(.)\]/g, "$1" ),
-      "' に一致する候補：",
-      candidate_words.length + "件<br>"
-    ].join('');
-
-    update_doc( 'grep_condition',  html );
-
-    // 候補単語に色を付ける処理が重たいので
-    // 分割処理して、時々 event loop に制御を渡す
-    let candidate_doc = '';
-    let sub_len       = Math.max( 20, lines.length / 10 );
-    for ( let i = 0; i < lines.length; i += sub_len ) {
-      candidate_doc += lines.slice( i, i + sub_len ).join( "<br>" ).
-        replace( must_RE, '<span class="B">$&</span>' ) + "<br>"
-      await sleep(1);
-    }
-    update_doc( 'candidate_words', candidate_doc );
-
-  } catch (e) {
-    // 正規表現の文法エラーを無視する
-    console.log(e)
   }
+
+  let html = [
+    ( blow_chars.length > 0 )? ( "「" + blow_chars + "」を含み、<br>" ) : '',
+    ( ng_chars.length > 0   )? ( "「" + ng_chars + "」を含まず、<br>" ) : '',
+    "'",
+    pattern.replace(/\./g,'・').replace( /\[(.)\]/g, "$1" ),
+    "' に一致する候補：",
+    candidate_words.length + "件<br>"
+  ].join('');
+
+  update_doc( 'grep_condition',  html );
+
+  // 候補単語に色を付ける処理が重たいので
+  // 分割処理して、時々 event loop に制御を渡す
+  let candidate_doc = '';
+  let sub_len       = Math.max( 20, lines.length / 10 );
+  for ( let i = 0; i < lines.length; i += sub_len ) {
+    candidate_doc += lines.slice( i, i + sub_len ).join( "<br>" ).
+      replace( must_RE, '<span class="B">$&</span>' ) + "<br>"
+    await sleep(1);
+  }
+  update_doc( 'candidate_words', candidate_doc );
+
   log( "< grep()" );
 }
 
@@ -312,9 +300,8 @@ async function refine() {
   log( "> make lines" );
   for ( let i = 0; i < score_hist.length; i += 3 ) {
     lines.push( score_hist.slice( i, i + 3 ).
-                map( (sc) => {
-                  return ('    ' + sc.value  ).slice( -5 ) +  ':' + sc.key;
-                }).join( '　' )
+                map( sc => ('    ' + sc.value ).slice( -5 ) + ':' + sc.key ).
+                join( '　' )
               );
   }
   log( "<" );
