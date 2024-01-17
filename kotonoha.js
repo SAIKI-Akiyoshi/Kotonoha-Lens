@@ -1,6 +1,10 @@
+/*
+ * (setq js-indent-level 2)
+ */
 
 var start_t    = new Date().getTime();
 var log_indent = 0;
+
 function log( msg ) {
   if ( msg == '' ) {
     start_t = new Date().getTime();
@@ -28,16 +32,7 @@ function hiraToKata(str) {
   );
 }
 
-// 配列の重複を取り除く
-// [ 'あ', 'あ', 'い', 'う', 'え', 'え', 'あ'] -> ['あ','い','う','え']
-function uniq( a ) {
-  let set = new Set( a );
-  return  Array.from( set ).sort();
-}
-
-function uniq_str( str ) {
-  return uniq( str.split( '' ) ).join( '' );
-}
+function uniq( a )       { return Array.from( new Set( a ) ).sort();  }
 
 // 連想配列をソートして Array を返す
 function dic_sort( dic ) {
@@ -53,6 +48,12 @@ function dic_sort( dic ) {
   return array;
 }
 
+function update_doc( id, html ) {
+  log( "> update_doc " + id  );
+  document.getElementById( id ).innerHTML = html;
+  log( "<" )
+}
+
 const sleep = (msec) => {
   return new Promise(function (resolve) {
     setTimeout(function () {
@@ -61,31 +62,28 @@ const sleep = (msec) => {
   });
 };
 
-/*
- * (setq js-indent-level 2)
- */
-var cur_chars = {
+const cur_chars = {
   hit_1  : "", hit_2  : "", hit_3  : "", hit_4  : "",  hit_5  : "",
   blow_1 : "", blow_2 : "", blow_3 : "", blow_4 : "",  blow_5 : "",
   none : "dummy"  // 初期状態で「入力変化」ありにするため
 };
 
 //全 ひらがな
-var  KANA_LIST =
-    `あいうえお  かきくけこ
-     さしすせそ  たちつてと
-     なにぬねの  はひふへほ
-     まみむめも  やゆよ
-     らりるれろ  わ
-     がぎぐげご  ざじずぜぞ
-     だぢづでど  ばびぶべぼ
-     ぱぴぷぺぽ  ぁぃぅぇぉ
-     っゃゅょ    んー`.replace( /\s+/g, '' ).split('');
+const  KANA_LIST =
+      `あいうえお  かきくけこ
+       さしすせそ  たちつてと
+       なにぬねの  はひふへほ
+       まみむめも  やゆよ
+       らりるれろ  わ      を
+       がぎぐげご  ざじずぜぞ
+       だぢづでど  ばびぶべぼ
+       ぱぴぷぺぽ  ぁぃぅぇぉ
+       っゃゅょ    んー`.replace( /\s+/g, '' ).split('');
 
-var NON_KANA_REGE = new RegExp( "[^" +
-                                KANA_LIST.join('') +
-                                hiraToKata( KANA_LIST.join('') ) +
-                                "]" );
+const NON_KANA_REGE = new RegExp( "[^" +
+                                  KANA_LIST.join('') +
+                                  hiraToKata( KANA_LIST.join('') ) +
+                                  "]" );
 var DB = [];
 var HIRA_DB  = [];
 var HIRA_DBa = [];
@@ -93,19 +91,26 @@ var HIRA_DBa = [];
 var in_analyze = false;
 
 function start() {
-log( '' )
-log( "> start");
-  let lead = '';
+  log( '' )
+  log( "> start");
   //
   // kotonoha.txt を内容から DB[] を作る
   //
+  const push = (wd) => {
+    let hira = kataToHira( wd );
+    DB.push( wd );
+    HIRA_DB.push( hira );
+    HIRA_DBa.push( uniq( hira.split( '' ) ) );
+  };
+
+  let lead = '';
   db_text.split( /\n/).forEach( line => {
     // 空白 , / で分割
     let words = line.split( /[,、\/／　 ]+/ ).filter( (s) => s != '' );
 
     if ( words.length == 1 && words[0].length == 5 ) { // 5文字
       // かわりもの
-      DB.push( words[0] );
+      push( words[0] );
     }
     else if ( words.length > 0 ) {
       //かん　きゃく　きゅう　きょう
@@ -114,16 +119,10 @@ log( "> start");
         lead = words.shift();
       }
       words.forEach( wd => {
-        DB.push( lead + wd );
+        push( lead + wd );
       });
     }
   });
-
-  for ( let i = 0; i < DB.length; i++ ) {
-    let wd = kataToHira( DB[i] );
-    HIRA_DB.push( wd );
-    HIRA_DBa.push( uniq( wd.split( '' ) ) );
-  }
 
   Object.keys(cur_chars).forEach( id => {
     let btn = document.getElementById( id )
@@ -133,6 +132,7 @@ log( "> start");
   log( "< start");
   check_input();
 };
+
 
 function check_input() {
   if ( in_analyze ) {
@@ -162,14 +162,6 @@ function check_input() {
   log( "< check_input()" );
 }
 
-function update_doc( id, html ) {
-  log( "> update_doc " + id  );
-  document.getElementById( id ).innerHTML = html;
-  log( "<" )
-}
-
-
-//
 //
 //
 var candidate_chars = {};
@@ -338,8 +330,8 @@ async function refine() {
 //
 async function analyze() {
   log( "> analyze()" );
-  let h = (i) => cur_chars[ "hit_"  + i ];  // 当たりの文字
-  let b = (i) => cur_chars[ "blow_" + i ];  // おしい文字
+  const h = (i) => cur_chars[ "hit_"  + i ];  // 当たりの文字
+  const b = (i) => cur_chars[ "blow_" + i ];  // おしい文字
 
   let hit_c  =  [1,2,3,4,5].map( i => h(i) ).join('');
   let blow_c =  [1,2,3,4,5].map( i => b(i) ).join('');
@@ -351,7 +343,7 @@ async function analyze() {
   let ng_chars = cur_chars[ "none" ];
 
   // 必ず含まれる文字の RegEx
-  let must_chars = uniq_str( hit_c + blow_c );
+  let must_chars = uniq( ( hit_c + blow_c ).split('') ).join('');
   KANA_LIST.forEach( c => {
     must_KANA_dic[ c ]  = must_chars.indexOf( c ) >= 0 ? 1: 0;
   });
