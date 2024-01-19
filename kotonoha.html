@@ -67,7 +67,7 @@
 
   <body>
     <h3>　　　ことのはレンズ
-    <font size=-3>(2024/01/11 20:26:16)</font></h3>
+    <font size=-3>(2024/01/19 17:16:31)</font></h3>
     <font size=-1>当たり！</font>
     <input type="text" size="3" id="hit_1" class="hit" >
     <input type="text" size="3" id="hit_2" class="hit" >
@@ -99,7 +99,8 @@
       <pre><div id="hist_chars"></div></pre>
     </div>
     <br>
-    候補を絞り込む単語<br>
+    候補を絞り込む単語：<span id="refine_num"></span> 件
+    <input type="button" value="Shrink" onclick="OnShrinkClick();" id="Shrink"/>    <br>
     <div class="box">
       <pre><div id="refine_words"></div></pre>
     </div>

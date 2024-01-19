@@ -1,6 +1,10 @@
+/*
+ * (setq js-indent-level 2)
+ */
 
 var start_t    = new Date().getTime();
 var log_indent = 0;
+
 function log( msg ) {
   if ( msg == '' ) {
     start_t = new Date().getTime();
@@ -28,16 +32,7 @@ function hiraToKata(str) {
   );
 }
 
-// 配列の重複を取り除く
-// [ 'あ', 'あ', 'い', 'う', 'え', 'え', 'あ'] -> ['あ','い','う','え']
-function uniq( a ) {
-  let set = new Set( a );
-  return  Array.from( set ).sort();
-}
-
-function uniq_str( str ) {
-  return uniq( str.split( '' ) ).join( '' );
-}
+function uniq( a )       { return Array.from( new Set( a ) ).sort();  }
 
 // 連想配列をソートして Array を返す
 function dic_sort( dic ) {
@@ -46,11 +41,17 @@ function dic_sort( dic ) {
   let keys = Object.keys( dic );
   log( "size = " + keys.length );
 
-  let array = keys.map((k)=>({ key: k, value: dic[k] }));
+  let array = keys.map( k => ({ key: k, value: dic[k] }) );
   array.sort( (a, b) => b.value - a.value );  // reverse
 
   log( "<" );
   return array;
+}
+
+function update_doc( id, html ) {
+  log( "> update_doc " + id  );
+  document.getElementById( id ).innerHTML = html;
+  log( "<" )
 }
 
 const sleep = (msec) => {
@@ -61,56 +62,67 @@ const sleep = (msec) => {
   });
 };
 
-/*
- * (setq js-indent-level 2)
- */
-var cur_chars = {
+const cur_chars = {
   hit_1  : "", hit_2  : "", hit_3  : "", hit_4  : "",  hit_5  : "",
   blow_1 : "", blow_2 : "", blow_3 : "", blow_4 : "",  blow_5 : "",
   none : "dummy"  // 初期状態で「入力変化」ありにするため
 };
 
 //全 ひらがな
-var  KANA_LIST =
-    `あいうえお  かきくけこ
-     さしすせそ  たちつてと
-     なにぬねの  はひふへほ
-     まみむめも  やゆよ
-     らりるれろ  わ
-     がぎぐげご  ざじずぜぞ
-     だぢづでど  ばびぶべぼ
-     ぱぴぷぺぽ  ぁぃぅぇぉ
-     っゃゅょ    んー`.replace( /\s+/g, '' ).split('');
+const  KANA_LIST =
+      `あいうえお  かきくけこ
+       さしすせそ  たちつてと
+       なにぬねの  はひふへほ
+       まみむめも  やゆよ
+       らりるれろ  わ      を
+       がぎぐげご  ざじずぜぞ
+       だぢづでど  ばびぶべぼ
+       ぱぴぷぺぽ  ぁぃぅぇぉ
+       っゃゅょ    んー`.replace( /\s+/g, '' ).split('');
 
-var KANA_REGE = new RegExp( "[" +
-                            KANA_LIST.join('') +
-                            kataToHira( KANA_LIST.join('') ) +
-                            "]" );
-
-var NON_KANA_REGE = new RegExp( "[^" +
-                                KANA_LIST.join('') +
-                                kataToHira( KANA_LIST.join('') ) +
-                                "]" );
+const NON_KANA_REGE = new RegExp( "[^" +
+                                  KANA_LIST.join('') +
+                                  hiraToKata( KANA_LIST.join('') ) +
+                                  "]" );
 var DB = [];
 var HIRA_DB  = [];
 var HIRA_DBa = [];
+var HIRA_DBa2= [];
 
 var in_analyze = false;
 
 function start() {
-log( '' )
-log( "> start");
-  let lead = '';
+  log( '' )
+  log( "> start");
   //
   // kotonoha.txt を内容から DB[] を作る
   //
+  shrinked_DB = new Set();
+
+  const push = (wd) => {
+    let hira = kataToHira( wd );
+    DB.push( wd );
+    HIRA_DB.push( hira );
+    let ua = uniq( hira.split( '' ) );   // ['た','ま','て','ば','こ']
+    HIRA_DBa.push( ua );                 // ['たまてばこ']
+    if ( shrinked_DB.has( ua.join('') ) ) {
+      HIRA_DBa2.push( [] );
+    }
+    else {
+      // 'いんしょう' と 'しょういん' を区別しない
+      HIRA_DBa2.push( ua );
+      shrinked_DB.add( ua.join('') );
+    }
+  };
+
+  let lead = '';
   db_text.split( /\n/).forEach( line => {
     // 空白 , / で分割
     let words = line.split( /[,、\/／　 ]+/ ).filter( (s) => s != '' );
 
     if ( words.length == 1 && words[0].length == 5 ) { // 5文字
       // かわりもの
-      DB.push( words[0] );
+      push( words[0] );
     }
     else if ( words.length > 0 ) {
       //かん　きゃく　きゅう　きょう
@@ -119,16 +131,10 @@ log( "> start");
         lead = words.shift();
       }
       words.forEach( wd => {
-        DB.push( lead + wd );
+        push( lead + wd );
       });
     }
   });
-
-  for ( let i = 0; i < DB.length; i++ ) {
-    let wd = kataToHira( DB[i] );
-    HIRA_DB.push( wd );
-    HIRA_DBa.push( uniq( wd.split( '' ) ) );
-  }
 
   Object.keys(cur_chars).forEach( id => {
     let btn = document.getElementById( id )
@@ -139,128 +145,126 @@ log( "> start");
   check_input();
 };
 
+
 function check_input() {
   if ( in_analyze ) {
     console.log( "IN ANALYZE" );
     setTimeout( check_input, 300 ); // 少し待って再トライ
+    return;
   }
-  else {
-    log( '' );
-    log( "> check_input()" );
 
-    // input欄の内容を読み込んで analyze() を呼ぶ
-    let changed = false;
-    Object.keys(cur_chars).forEach( id => {
-      let c = document.getElementById( id ).value;
-      if ( c != cur_chars[ id ] ) {
-        // かな以外の文字が含まれている場合は analyze() を呼ばない
-        if ( c.search( NON_KANA_REGE ) == -1 )  {
-          changed = true;
-          cur_chars[ id ] = c;
-        }
-      }
-    });
-    if ( changed ) {
-      in_analyze = true;
-      analyze();
+  log( '' );
+  log( "> check_input()" );
+
+  // input欄の内容を読み込んで analyze() を呼ぶ
+  let changed = false;
+  Object.keys(cur_chars).forEach( id => {
+    let str = document.getElementById( id ).value;
+    if ( str != cur_chars[ id ] && str.search( NON_KANA_REGE ) == -1 )  {
+      // かな以外の文字が含まれている場合は analyze() を呼ばない
+      changed = true;
+      cur_chars[ id ] = kataToHira( str );
     }
-
-    log( "< check_input()" );
+  });
+  if ( changed ) {
+    in_analyze = true;
+    analyze();
   }
+
+  log( "< check_input()" );
 }
 
-function update_doc( id, html ) {
-  log( "> update_doc " + id  );
-  document.getElementById( id ).innerHTML = html;
-  log( "<" )
-}
-
-
+var shrinked = false;
+function OnShrinkClick() {
+  shrinked = !shrinked;
+  log( "click() " + shrinked );
+  document.getElementById( "Shrink" ).value = shrinked? "Normal" : "Shrink";
+  refine();
+};
 //
 //
-//
-var candidate_words = [];
-var candidate_chars = [];
+var candidate_chars = {};
 var must_RE         = null;
 var must_KANA_dic   = {};
 
-async function grep( pattern, blow_c, ng_chars ) {
+async function grep( pattern, blow_chars, ng_chars ) {
   log( "> grep( "+ pattern + ")" );
 
-  candidate_words.length = 0;
-  candidate_chars.length = 0;
+  let candidate_words = [];
+  candidate_chars = {};
 
-  try {
-    let match_re = new RegExp( kataToHira( pattern ) )
-    let ng_re    = new RegExp( "[" + kataToHira( ng_chars ) + "]" );
+  let match_re = new RegExp( kataToHira( pattern ) )
+  let ng_re    = new RegExp( "[" + kataToHira( ng_chars ) + "]" );
 
-    let blow_a   = blow_c.split('')
-    let lines    = [];
-    let step     = Math.floor( DB.length / 10 );
+  let blow_a   = blow_chars.split('')
+  let lines    = [];
+  let step     = Math.floor( DB.length / 10 );
 
-    for ( let i = 0; i < DB.length; ++i ) {
-      // 8000回ループの間、時々 event loopに制御を渡す
-      if ( i % step == 0 ) { await sleep(1); }
+  for ( let i = 0; i < DB.length; ++i ) {
+    // 8000回ループの間、時々 event loopに制御を渡す
+    if ( i % step == 0 ) { await sleep(1); }
 
-      let wd = HIRA_DB[i];
+    let wd = HIRA_DB[i];
 
-      if (
-        // おしい文字全てが含まれている
-        ( blow_a.length == 0 || blow_a.every( (c) => wd.indexOf(c) >= 0 ) ) &&
-          // どの NG 文字にも一致しない
-        ( ng_chars.length == 0 || wd.search( ng_re ) == -1 ) &&
-          // 検索パターンに一致
-        ( wd.search( match_re ) >= 0 ) ) {
+    if (
+      // おしい文字全てが含まれている
+      ( blow_a.length == 0 || blow_a.every( (c) => wd.indexOf(c) >= 0 ) ) &&
+        // どの NG 文字にも一致しない
+      ( ng_chars.length == 0 || wd.search( ng_re ) == -1 ) &&
+        // 検索パターンに一致
+      ( wd.search( match_re ) >= 0 ) ) {
 
-        // 候補単語に追加
-        candidate_words.push( DB[i] );
-        candidate_chars  = uniq( candidate_chars.concat( HIRA_DBa[i] ) );
-        // ５単語 単位で改行
-        if ( ( candidate_words.length - 1 ) % 5 == 0 ) {      // 行頭
-          lines.push( DB[i] );
-        }
-        else {
-          lines[ lines.length - 1 ] += "　" + DB[i];  // 空白に続けて追加
-        }
+      // 候補単語に追加
+      candidate_words.push( DB[i] );
+      // 文字の使用頻度
+      HIRA_DBa[i].forEach( c => {
+        candidate_chars[c] = ( candidate_chars[c] || 0 ) + 1;
+      });
+      // ５単語 単位で改行
+      if ( ( candidate_words.length - 1 ) % 5 == 0 ) {      // 行頭
+        lines.push( DB[i] );
+      }
+      else {
+        lines[ lines.length - 1 ] += "　" + DB[i];  // 空白に続けて追加
       }
     }
-
-    let html = [
-      ( blow_c.length > 0   )? ( "「" + blow_c + "」を含み、<br>" )     : '',
-      ( ng_chars.length > 0 )? ( "「" + ng_chars + "」を含まず、<br>" ) : '',
-      "'",
-      pattern.replace(/\./g,'・').replace( /\[(.)\]/g, "$1" ),
-      "' に一致する候補：",
-      candidate_words.length + "件<br>"
-    ].join('');
-
-    update_doc( 'grep_condition',  html );
-
-    // 候補単語に色を付ける処理が重たいので
-    // 分割処理して、時々 event loop に制御を渡す
-    let candidate_doc = '';
-    let sub_len       = Math.max( 20, lines.length / 10 );
-    for ( let i = 0; i < lines.length; i += sub_len ) {
-      candidate_doc += lines.slice( i, i + sub_len ).join( "<br>" ).
-        replace( must_RE, '<span class="B">$&</span>' ) + "<br>"
-      await sleep(1);
-    }
-    update_doc( 'candidate_words', candidate_doc );
-
-  } catch (e) {
-    // 正規表現の文法エラーを無視する
-    console.log(e)
   }
+
+  let html = [
+    ( blow_chars.length > 0 )? ( "「" + blow_chars + "」を含み、<br>" ) : '',
+    ( ng_chars.length > 0   )? ( "「" + ng_chars + "」を含まず、<br>" ) : '',
+    "'",
+    pattern.replace(/\./g,'・').replace( /\[(.)\]/g, "$1" ),
+    "' に一致する候補：",
+    candidate_words.length + "件<br>"
+  ].join('');
+
+  update_doc( 'grep_condition',  html );
+
+  // 候補単語に色を付ける処理が重たいので
+  // 分割処理して、時々 event loop に制御を渡す
+  let candidate_doc = '';
+  let sub_len       = Math.max( 20, lines.length / 10 );
+  for ( let i = 0; i < lines.length; i += sub_len ) {
+    candidate_doc += lines.slice( i, i + sub_len ).join( "<br>" ).
+      replace( must_RE, '<span class="B">$&</span>' ) + "<br>"
+    await sleep(1);
+  }
+  update_doc( 'candidate_words', candidate_doc );
+
   log( "< grep()" );
 }
 
 //
 // 候補単語の含まれる文字のヒストグラム
 //
-async function show_used_chars( hist ) {
+async function show_used_chars() {
   log( "> show_used_chars()" );
 
-  let chars = hist.filter( (h) => h.value > 0 );
+  //  candidate_chars : { k1:v1, k2:v2, ,,, ]    c と その出現回数
+  //  dic_sort : [{km:vm}, {kn:vn} ....]     <= {k:v} の配列にして v でsort
+  //
+  let chars = dic_sort( candidate_chars );
   let text = ""
   let col  = 6;
   for ( let i = 0; i < chars.length; i += col ) {
@@ -283,20 +287,22 @@ async function show_used_chars( hist ) {
 //
 // 絞り込みのための候補単語の表示
 //
-async function refine( rate ) {
+async function refine() {
   log( "> refine()" );
 
   log( "> DB.forEach" );
   // DB[] の単語に rate で重みを付ける
   let score = {}
 
+  let hira_db = ( shrinked )? HIRA_DBa2 : HIRA_DBa;
   for ( let i = 0; i < DB.length; i++ ) {
     let s   = 0;
-    HIRA_DBa[i].forEach( ( c ) => {
-      s += must_KANA_dic[ c ] == 0 ? rate[ c ] : 0;
+    hira_db[i].forEach( ( c ) => {
+      s += ( must_KANA_dic[ c ] == 0 )? ( candidate_chars[c] || 0 ) : 0;
     });
     if ( s > 0 ) score[ DB[i] ] = s;
   }
+
   log( "< DB.forEach" );
   // => { けものみち:9, わさびもち:10, ちょっけつ: 8,,, }
 
@@ -307,9 +313,8 @@ async function refine( rate ) {
   log( "> make lines" );
   for ( let i = 0; i < score_hist.length; i += 3 ) {
     lines.push( score_hist.slice( i, i + 3 ).
-                map( (sc) => {
-                  return ('    ' + sc.value  ).slice( -5 ) +  ':' + sc.key;
-                }).join( '　' )
+                map( sc => ('    ' + sc.value ).slice( -5 ) + ':' + sc.key ).
+                join( '　' )
               );
   }
   log( "<" );
@@ -321,7 +326,7 @@ async function refine( rate ) {
   // するための RegExp => rege2
   // 候補単語の文字を削除
   let unused_chars = KANA_LIST.join('').replace(
-    new RegExp( '[' + candidate_chars.join('') + ']', 'g' ),
+    new RegExp( '[' + Object.keys( candidate_chars ) + ']', 'g' ),
     '' );
   let unused_re = new RegExp( '[' + unused_chars + hiraToKata(unused_chars) + ']+', 'g' );
 
@@ -336,6 +341,7 @@ async function refine( rate ) {
       "<br>"
     await sleep(1);
   }
+  update_doc( 'refine_num', '' + score_hist.length );
   update_doc( 'refine_words', refine_doc );
   log( "< refine()" );
 }
@@ -346,52 +352,35 @@ async function refine( rate ) {
 //
 async function analyze() {
   log( "> analyze()" );
+  const h = (i) => cur_chars[ "hit_"  + i ];  // 当たりの文字
+  const b = (i) => cur_chars[ "blow_" + i ];  // おしい文字
 
-  let hit_c   = [1,2,3,4,5].map( i => cur_chars[ "hit_"  + i ] ).join('');
-  let blow_c  = [1,2,3,4,5].map( i => cur_chars[ "blow_" + i ] ).join('');
-  let pattern = [1,2,3,4,5].map( i => {
-    let hc = cur_chars[ "hit_"  + i ];   // 当たりの文字
-    let bc = cur_chars[ "blow_" + i ];   // おしい文字
-
-    return ( hc.length > 0 )? ( '['  + hc + ']' ) : // そこに含まれる
-           ( bc.length > 0 )? ( '[^' + bc + ']' ) : // そこには含まれない
-           '.';                                     // なんでもOK
-  }).join('');
+  let hit_c  =  [1,2,3,4,5].map( i => h(i) ).join('');
+  let blow_c =  [1,2,3,4,5].map( i => b(i) ).join('');
+  let pattern = [1,2,3,4,5].map( i =>
+    ( h(i).length > 0 )? ( '['  + h(i) + ']' ) : //そこに含まれる
+    ( b(i).length > 0 )? ( '[^' + b(i) + ']' ) : // そこには含まれない
+    '.'                                          // なんでもOK
+  ).join('');
   let ng_chars = cur_chars[ "none" ];
 
   // 必ず含まれる文字の RegEx
-  let must_chars = uniq_str( kataToHira( blow_c + hit_c ) );
-  KANA_LIST.forEach( (kana) => {
-    must_KANA_dic[ kana ]   = must_chars.indexOf( kana ) >= 0 ? 1: 0;
+  let must_chars = uniq( ( hit_c + blow_c ).split('') ).join('');
+  KANA_LIST.forEach( c => {
+    must_KANA_dic[ c ]  = must_chars.indexOf( c ) >= 0 ? 1: 0;
   });
   must_RE = new RegExp( '[' + must_chars + hiraToKata(must_chars) + ']', 'g' );
 
   // blow_chars を含み、cur_chars[ "none" ]を含まず
   // pattern にマッチする 単語 を調べる
-  // => candidate_words
+  // その単語に含まれる文字 => candidate_chars
   await grep( pattern, blow_c, ng_chars );
 
-  // words[] の中の文字の出現頻度を調べる
-  //  rate : { k1:v1, k2:v2, ,,, ]    key と その出現回数
-  //  hist : [{km:vm}, {kn:vn} ....]     <= rate を配列にして sort
-  //  total : v1 + v2 + ...
-  //
-  log( "> calc_hist()" );
-  let rate  = {};
-  KANA_LIST.forEach( kana => rate[ kana ] = 0 );
-  candidate_words.forEach( word => {
-    kataToHira( word ).split('').forEach( c => rate[c]++ );
-  });
-
-  let hist = dic_sort( rate );
-  log( "< calc_hist()" );
-
-
-  // 検索結果の単語に含まれる文字を頻度順に表示
-  await show_used_chars( hist );
+  // 検索結果の単語に含まれる文字(candidate_chars)を頻度順に表示
+  await show_used_chars();
 
   // 絞り込みのための候補単語を表示
-  await refine( rate );
+  await refine();
 
   log( "< analyze()" );
   in_analyze = false;
