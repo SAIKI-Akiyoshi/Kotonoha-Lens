@@ -87,6 +87,7 @@ const NON_KANA_REGE = new RegExp( "[^" +
 var DB = [];
 var HIRA_DB  = [];
 var HIRA_DBa = [];
+var HIRA_DBa2= [];
 
 var in_analyze = false;
 
@@ -96,11 +97,22 @@ function start() {
   //
   // kotonoha.txt を内容から DB[] を作る
   //
+  shrinked_DB = new Set();
+
   const push = (wd) => {
     let hira = kataToHira( wd );
     DB.push( wd );
     HIRA_DB.push( hira );
-    HIRA_DBa.push( uniq( hira.split( '' ) ) );
+    let ua = uniq( hira.split( '' ) );   // ['た','ま','て','ば','こ']
+    HIRA_DBa.push( ua );                 // ['たまてばこ']
+    if ( shrinked_DB.has( ua.join('') ) ) {
+      HIRA_DBa2.push( [] );
+    }
+    else {
+      // 'いんしょう' と 'しょういん' を区別しない
+      HIRA_DBa2.push( ua );
+      shrinked_DB.add( ua.join('') );
+    }
   };
 
   let lead = '';
@@ -162,6 +174,13 @@ function check_input() {
   log( "< check_input()" );
 }
 
+var shrinked = false;
+function OnShrinkClick() {
+  shrinked = !shrinked;
+  log( "click() " + shrinked );
+  document.getElementById( "Shrink" ).value = shrinked? "Normal" : "Shrink";
+  refine();
+};
 //
 //
 var candidate_chars = {};
@@ -275,9 +294,10 @@ async function refine() {
   // DB[] の単語に rate で重みを付ける
   let score = {}
 
+  let hira_db = ( shrinked )? HIRA_DBa2 : HIRA_DBa;
   for ( let i = 0; i < DB.length; i++ ) {
     let s   = 0;
-    HIRA_DBa[i].forEach( ( c ) => {
+    hira_db[i].forEach( ( c ) => {
       s += ( must_KANA_dic[ c ] == 0 )? ( candidate_chars[c] || 0 ) : 0;
     });
     if ( s > 0 ) score[ DB[i] ] = s;
