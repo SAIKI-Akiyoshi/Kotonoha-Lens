@@ -302,6 +302,7 @@ async function refine() {
     });
     if ( s > 0 ) score[ DB[i] ] = s;
   }
+
   log( "< DB.forEach" );
   // => { けものみち:9, わさびもち:10, ちょっけつ: 8,,, }
 
@@ -340,6 +341,7 @@ async function refine() {
       "<br>"
     await sleep(1);
   }
+  update_doc( 'refine_num', '' + score_hist.length );
   update_doc( 'refine_words', refine_doc );
   log( "< refine()" );
 }
